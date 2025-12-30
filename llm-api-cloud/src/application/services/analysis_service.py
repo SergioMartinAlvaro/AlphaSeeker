@@ -15,6 +15,7 @@ from src.application.services.job_service import JobService
 logger = setup_logger(__name__)
 
 
+class AnalysisService:
     SYSTEM_PROMPT = """
     ROLE: You are an expert Financial Analyst (PRO Level).
     TASK: Analyze the following financial news item and provide actionable intelligence.
