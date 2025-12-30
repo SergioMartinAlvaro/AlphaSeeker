@@ -2,7 +2,8 @@ fastapi
 uvicorn
 requests
 google-generativeai
-pydantic
+python-dotenv
+tqdm>=4.66.0tic
 google-cloud-storage
 pytest
 httpx

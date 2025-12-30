@@ -2,6 +2,7 @@ import time
 import uuid
 import requests
 import json
+from tqdm import tqdm
 from typing import List, Dict, Any
 from src.application.dtos.schemas import NewsItem
 from src.application.services.ollama_service import OllamaService
@@ -18,7 +19,7 @@ class AnalysisService:
         prompts = [item.text for item in noticias if isinstance(item.text, str)]
         valid_results = []
         
-        for i, prompt in enumerate(prompts):
+        for i, prompt in enumerate(tqdm(prompts, desc=f"AnalysisJob {job_id}", unit="item")):
             try:
                 # Rate Limiting (only for Gemini to avoid quotas, fast for local)
                 if settings.LLM_PROVIDER == "gemini":

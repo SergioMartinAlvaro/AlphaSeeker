@@ -1,8 +1,8 @@
 import time
 import requests
 import uuid
-import uuid
 from typing import List, Dict, Any
+from tqdm import tqdm
 from google.cloud import storage
 from src.infrastructure.config.settings import settings
 from src.infrastructure.logging.logger import setup_logger
@@ -47,7 +47,7 @@ class ImageService:
         logger.info(f"🚀 [ImageJob {job_id}] STARTING. Items: {len(items)}. Timeout: {TIMEOUT_SECONDS}s")
         results = []
         
-        for i, item in enumerate(items):
+        for i, item in enumerate(tqdm(items, desc=f"ImageJob {job_id}", unit="img")):
             # Check Timeout
             elapsed = time.time() - start_time
             if elapsed > TIMEOUT_SECONDS:
