@@ -1,7 +1,9 @@
 version: '3.8'
 
 services:
-  # 1. Main Service: n8n Workflow Automation
+  # ----------------------------------------------------
+  # 1. CORE SERVICES (n8n & AI)
+  # ----------------------------------------------------
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -18,7 +20,6 @@ services:
     depends_on:
       - llm-api
 
-  # 2. Local AI Model Service (Ollama)
   ollama:
     image: ollama/ollama:latest
     ports:
@@ -26,16 +27,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     restart: always
-    # GPU Support (Commented out for compatibility, uncomment if user has NVIDIA GPU setup in Docker)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
 
-  # 3. Model Puller (Auto-downloads llama3 on startup)
   ollama-puller:
     image: curlimages/curl
     container_name: ollama-puller
@@ -50,7 +42,9 @@ services:
       echo 'Model pulled successfully!';
       "
 
-  # 4. Web Scraper API
+  # ----------------------------------------------------
+  # 2. API SERVICES (Scraper & LLM)
+  # ----------------------------------------------------
   scraper:
     build: ./scraper
     ports:
@@ -58,7 +52,6 @@ services:
     environment:
       - PORT=8080
 
-  # 5. Application Logic API
   llm-api:
     build: ./llm-api-cloud
     ports:
@@ -66,11 +59,48 @@ services:
     environment:
       - PORT=8080
       - LLM_PROVIDER=ollama
-      # Now points to the internal docker service 'ollama'
       - OLLAMA_URL=http://ollama:11434/api/generate
       - ENABLE_IMAGE_GEN=false
     depends_on:
       - ollama
+
+  # ----------------------------------------------------
+  # 3. FULL STACK WEB APP (New!)
+  # ----------------------------------------------------
+  
+  # Local Database (Firebase Emulator)
+  firebase:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --quiet
+    ports:
+      - "9090:8080" # Host 9090 -> Emulator 8080
+    environment:
+      - CLOUDSDK_CORE_PROJECT=alphaseeker-local
+
+  # Main Backend (Express)
+  backend:
+    build: 
+      context: ./alphaseeker-web
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - GCLOUD_PROJECT=alphaseeker-local
+      - FIRESTORE_EMULATOR_HOST=firebase:8080
+    depends_on:
+      - firebase
+
+  # Main Frontend (React)
+  frontend:
+    build:
+      context: ./alphaseeker-web
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8085:80" # Exposed on port 8085
+    depends_on:
+      - backend
 
 volumes:
   n8n_data:

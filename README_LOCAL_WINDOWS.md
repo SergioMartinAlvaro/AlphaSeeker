@@ -54,10 +54,17 @@ El sistema empezará a descargar:
 
 ## ✅ ¿Cómo sé si ya terminó?
 
-Espera unos minutos después de ejecutar el comando.
-Entra en: [http://localhost:5678](http://localhost:5678)
+Espera unos minutos después de ejecutar la aplicación.
 
-Si ves la pantalla de bienvenida de **n8n**, es que todo ha funcionado.
+## Cómo lo uso
+
+1.  **n8n (Tu Panel de Control)**: [http://localhost:5678](http://localhost:5678)
+    -   Crea tu usuario y contraseña.
+    -   Importa tu flujo de trabajo (te pasaré el archivo `.json` aparte o búscalo en la carpeta `n8n-workflows`).
+2.  **AlphaSeeker Web (Frontend)**: [http://localhost:8085](http://localhost:8085)
+3.  **AlphaSeeker API (Backend)**: [http://localhost:3000](http://localhost:3000)
+4.  **API IA (Estado)**: [http://localhost:8080/health](http://localhost:8080/health)
+5.  **Scraper (Estado)**: [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
 
