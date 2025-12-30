@@ -60,7 +60,12 @@ Espera unos minutos después de ejecutar la aplicación.
 
 1.  **n8n (Tu Panel de Control)**: [http://localhost:5678](http://localhost:5678)
     -   Crea tu usuario y contraseña.
-    -   **IMPORTANTE**: Importa el archivo `n8n-workflows/AI FINANCIAL_LOCAL.json` (ya tiene la configuración local lista).
+    -   Crea tu usuario y contraseña.
+    -   **⚠️ IMPORTANTE**: Tienes que importar el flujo de trabajo correcto.
+        1.  Ve al menú de la izquierda **Workflows**.
+        2.  Haz clic en **Add workflow** > **Import from file**.
+        3.  Selecciona el archivo `n8n-workflows/AI FINANCIAL_LOCAL.json` que está en la carpeta del proyecto.
+        4.  Dale al botón **Activate** (arriba a la derecha).
 2.  **AlphaSeeker Web (Frontend)**: [http://localhost:8085](http://localhost:8085)
 3.  **AlphaSeeker API (Backend)**: [http://localhost:3000](http://localhost:3000)
 4.  **API IA (Estado)**: [http://localhost:8080/health](http://localhost:8080/health)
