@@ -8,7 +8,11 @@ from src.application.dtos.schemas import NewsItem
 from src.application.services.ollama_service import OllamaService
 from src.infrastructure.config.settings import settings
 
-# ... imports ...
+from src.infrastructure.logging.logger import setup_logger
+from src.application.services.gemini_service import GeminiService
+from src.application.services.job_service import JobService
+
+logger = setup_logger(__name__)
 
 class AnalysisService:
     @classmethod
