@@ -1,0 +1,29 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy root package.json and lock files
+COPY package*.json ./
+
+# Copy packages
+COPY packages/shared ./packages/shared
+COPY packages/back ./packages/back
+COPY packages/front/package.json ./packages/front/package.json
+
+# Install dependencies for the entire workspace
+# This ensures that packages/back can resolve @alphaseeker/shared
+RUN npm install
+
+# Build shared package first (if needed, usually tsc)
+WORKDIR /app/packages/shared
+RUN npm run build || true
+
+# Build backend
+WORKDIR /app/packages/back
+RUN npm run build
+
+# Expose port
+EXPOSE 3000
+
+# Start command (running from packages/back)
+CMD [ "npm", "start" ]

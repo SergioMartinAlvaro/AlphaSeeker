@@ -1,0 +1,15 @@
+
+node_modules/
+.git/
+.gitignore
+dist/
+build/
+packages/back/node_modules/
+packages/front/node_modules/
+packages/shared/node_modules/
+packages/back/dist/
+packages/front/dist/
+packages/shared/dist/
+coverage/
+.DS_Store
+*.log

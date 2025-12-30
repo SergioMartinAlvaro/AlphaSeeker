@@ -1,0 +1,14 @@
+# Requisitos del Servidor API
+fastapi
+uvicorn[standard]
+
+# Requisitos del Modelo LLM y Finetuning
+torch
+transformers
+peft
+accelerate # Ayuda a manejar la inferencia del modelo en GPU/CPU
+bitsandbytes # Si usas cuantización (4-bit, 8-bit) para ahorrar memoria
+sentencepiece
+
+# Utilidades
+pydantic

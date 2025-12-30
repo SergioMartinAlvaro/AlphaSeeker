@@ -1,0 +1,7 @@
+{
+  "name": "alphaseeker-web",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}

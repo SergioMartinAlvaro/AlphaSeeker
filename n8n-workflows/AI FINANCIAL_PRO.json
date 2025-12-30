@@ -1,0 +1,461 @@
+{
+  "name": "AI FINANCIAL",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        304
+      ],
+      "id": "1c626779-6487-4ef5-91dc-020cec3673a2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bloomberg.com/markets/news.rss?limit=5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1872,
+        208
+      ],
+      "id": "807f2452-beee-4c71-b34a-f4ab695d66f4",
+      "name": "RSS Read",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {
+          "customFields": "limit=5"
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1664,
+        208
+      ],
+      "id": "57bde5cb-75d8-4618-8a40-d0a360f7bf78",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.investing.com/rss/news.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        208
+      ],
+      "id": "1e58d4e1-8e5c-47d7-8f46-ea007780502a",
+      "name": "RSS Read2",
+      "alwaysOutputData": true,
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1232,
+        224
+      ],
+      "id": "693b8265-5d9e-44ab-aa0c-68f987aa9478",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        208,
+        224
+      ],
+      "id": "9929e937-04d6-47ba-860c-90e38406c2e8",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://python-scraper-jzw5jq26xq-uc.a.run.app/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1040,
+        240
+      ],
+      "id": "1bb587d6-b412-4370-be55-fa6e418ecc8e",
+      "name": "Obtener contenido de noticias"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of items) {\n  // 1. EXTRAER EL TEXTO (Del Scraper)\n  const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n\n  // 2. CONSTRUIR EL PROMPT\n  const fullPrompt = `### System Prompt:\nEres un analista financiero experto de Wall Street y un asesor de inversiones de alto nivel.\nTu tarea es analizar la siguiente noticia financiera y generar un informe detallado en formato JSON.\n\nDebes analizar:\n1. **Análisis Económico y de Inversión**: Qué significa esto para la economía y los sectores relacionados.\n2. **Consejo de Inversión**: Recomendaciones claras (Comprar, Vender, Mantener) justificadas.\n3. **Impacto Hipotético en el Mercado**: Cómo podrían reaccionar las acciones o índices específicos a corto y medio plazo.\n\nLa salida DEBE ser un JSON válido con la siguiente estructura:\n{\n  \"analisis_economico\": \"Texto del análisis...\",\n  \"consejo_inversion\": \"Texto del consejo...\",\n  \"impacto_mercado\": \"Texto del impacto...\",\n  \"tickers_afectados\": [\"TICKER1\", \"TICKER2\"],\n  \"sentimiento\": \"Positivo/Negativo/Neutral\"\n}\n\n### Noticia:\n${raw_text}\n\n### JSON Esperado:`;\n\n  // 3. GUARDAR EN EL ITEM PARA EL SIGUIENTE NODO\n  item.json.prompt_para_api = fullPrompt;\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        240
+      ],
+      "id": "7afb6232-7d2d-48fd-ac14-7ad729df2cf4",
+      "name": "Normalizar datos"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -368,
+        240
+      ],
+      "id": "b336fa84-dd1e-4f51-98d3-e5314815bf7f",
+      "name": "Recorrer noticias en lotes"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analyze-batch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"noticias\": $input.all().map(item => ({ \"text\": item.json.prompt_para_api })), \"callback_url\": \"http://34.9.244.104:5678/webhook/webhook-callback\"} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        256,
+        432
+      ],
+      "id": "81b34f01-a44f-4edc-8444-08cc72782562",
+      "name": "Llamar a la IA en lote",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-callback",
+        "options": {}
+      },
+      "name": "Webhook Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "33124930-fc53-4005-bea4-108952b0063d",
+      "webhookId": "b9ddebfc-a156-4d1d-89b3-fdc91bb66b26"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n  const llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  // ENFORCED STYLE: Flat, Modern, Financial World\n  const style = \"flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality\";\n  const fullPrompt = `${subjectPrompt}, ${style}`;\n  \n  const encodedPrompt = encodeURIComponent(fullPrompt);\n  const seed = Math.floor(Math.random() * 10000);\n  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&seed=${seed}`;\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: 'news_' + Math.floor(Math.random()*100000)\n  };\n}\nreturn items;\n"
+      },
+      "name": "Definir Estilo y URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        224
+      ],
+      "id": "2d607a21-9896-42c6-9963-973102aabe04"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.generated_image_url }}",
+        "options": {
+          "batching": {
+             "batchSize": 1,
+             "batchInterval": 2000
+          }
+        }
+      },
+      "name": "Descargar Imagen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        688,
+        224
+      ],
+      "id": "15709eaf-4065-470b-a00a-192629326ddc",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "create",
+        "bucketName": "alphaseeker-assets",
+        "objectName": "={{ 'news-images/' + $json.temp_id + '.jpg' }}",
+        "createData": {},
+        "createQuery": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "name": "Subir a GCS",
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        912,
+        224
+      ],
+      "id": "03af9574-25dd-43f2-86e8-d02f05db5ade",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "qLnNF6lXChjLcSKr",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n   // Construct Public URL (GCS 'publicRead' ACL makes this valid)\n   const bucket = 'alphaseeker-assets';\n   let publicUrl = null;\n   \n   if (item.json.name && !item.json.error) {\n       const filename = item.json.name; // 'name' is usually returned by GCS API inside json\n       publicUrl = `https://storage.googleapis.com/${bucket}/${filename}`;\n   }\n   \n   // Prepare final object\n   item.json = {\n       title: item.json.title || 'Market News',\n       content_summary: item.json.content_summary || '',\n       published_date: new Date().toISOString(),\n       url: item.json.url || '',\n       source: 'n8n',\n       investment_advice: item.json.investment_advice || {},\n       image_url: publicUrl\n   };\n}\nreturn items;\n"
+      },
+      "name": "Preparar Objeto Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        224
+      ],
+      "id": "a4b7a5a0-3c6f-49ef-81a1-c608fb42e7b8"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news"
+      },
+      "name": "Guardar en Firestore Final",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        224
+      ],
+      "id": "6039f413-1bc4-4233-92c6-87cee5b4ae33"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "RSS Read2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Obtener contenido de noticias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener contenido de noticias": {
+      "main": [
+        [
+          {
+            "node": "Normalizar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar datos": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorrer noticias en lotes": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Llamar a la IA en lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar a la IA en lote": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Callback": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Definir Estilo y URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Definir Estilo y URL": {
+      "main": [
+        [
+          {
+            "node": "Descargar Imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Imagen": {
+      "main": [
+        [
+          {
+            "node": "Subir a GCS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a GCS": {
+      "main": [
+        [
+          {
+            "node": "Preparar Objeto Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Objeto Final": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Firestore Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "b0f3d8f6-65da-40f5-85ce-f9398a547a14",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "08a112c702a6b8d9c227e5db241bef1608a6170b374f551094e874b45a57fcfd"
+  },
+  "id": "Jwip4H7TwSd6mpUp",
+  "tags": [
+    {
+      "updatedAt": "2025-12-23T00:17:56.877Z",
+      "createdAt": "2025-12-23T00:17:56.877Z",
+      "id": "3ak8nBLy2atFeL3M",
+      "name": "Development"
+    }
+  ]
+}

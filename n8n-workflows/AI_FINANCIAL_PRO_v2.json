@@ -1,0 +1,482 @@
+{
+  "name": "AI FINANCIAL PRO v2 (Robust Cache)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        304
+      ],
+      "id": "trigger",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bloomberg.com/markets/news.rss?limit=5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1872,
+        208
+      ],
+      "id": "rss1",
+      "name": "RSS Read",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {
+          "customFields": "limit=5"
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1664,
+        208
+      ],
+      "id": "rss2",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.investing.com/rss/news.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        208
+      ],
+      "id": "rss3",
+      "name": "RSS Read2",
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1232,
+        224
+      ],
+      "id": "merge_rss",
+      "name": "Merge RSS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://python-scraper-jzw5jq26xq-uc.a.run.app/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1040,
+        240
+      ],
+      "id": "scraper",
+      "name": "Obtener contenido de noticias"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news",
+        "options": {
+            "limit": 100
+        },
+        "alwaysOutputData": true
+      },
+      "name": "Get Existing News",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        -840,
+        240
+      ],
+      "id": "check_final_db",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache",
+        "options": {
+            "limit": 100
+        },
+        "alwaysOutputData": true
+      },
+      "name": "Get Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        240
+      ],
+      "id": "check_cache",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newItems = $('Obtener contenido de noticias').all();\n\n// SAFETY FUNCTION to handle errors or empty inputs\nconst safeGet = (nodeName) => {\n  try {\n    const items = $(nodeName).all();\n    if (!items || items.length === 0) return [];\n    // If the first item contains an error key (from Continue on Fail), treat as empty\n    if (items[0].json && items[0].json.error) return [];\n    return items;\n  } catch (e) {\n    return [];\n  }\n};\n\nconst existingNews = safeGet('Get Existing News');\nconst cachedNews = safeGet('Get Cache');\n\nconst existingUrls = new Set(existingNews.map(i => i.json.url).filter(u => u));\nconst cachedMap = new Map();\ncachedNews.forEach(i => {\n  if(i.json.url) cachedMap.set(i.json.url, i.json);\n});\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  const url = item.json.link || item.json.url;\n  \n  // 1. Skip if already in Final DB (Deduplication)\n  if (existingUrls.has(url)) {\n      continue;\n  }\n\n  // 2. Check if in Cache\n  if (cachedMap.has(url)) {\n      // REPLAY CACHED RESULT\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      // NEW ITEM\n      item.json.is_cached = false;\n      // Prepare Prompt here\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      const fullPrompt = `### System Prompt:\\nEres un analista financiero experto de Wall Street... \\n\\n### Noticia:\\n${raw_text}\\n### JSON Esperado:`;\n      item.json.prompt_para_api = fullPrompt;\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        240
+      ],
+      "id": "deduplicator",
+      "name": "Deduplicator & Filter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_cached }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        240
+      ],
+      "id": "switch_cache",
+      "name": "Is Cached?"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -40,
+        350
+      ],
+      "id": "batch_node",
+      "name": "Recorrer noticias en lotes"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analyze-batch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"noticias\": $input.all().map(item => ({ \"text\": item.json.prompt_para_api })), \"callback_url\": \"http://34.9.244.104:5678/webhook/webhook-callback\"} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        160,
+        450
+      ],
+      "id": "llm_call",
+      "name": "Llamar a la IA en lote",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-callback",
+        "options": {}
+      },
+      "name": "Webhook Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook",
+      "webhookId": "b9ddebfc-a156-4d1d-89b3-fdc91bb66b26"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ],
+      "id": "split_out",
+      "name": "Split Out"
+    },
+    {
+        "parameters": {
+          "authentication": "serviceAccount",
+          "operation": "create",
+          "projectId": "alphaseeker-app-2025",
+          "collection": "news_cache",
+          "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown_' + Math.floor(Math.random() * 1000) }}",
+          "columns": "url, result_json",
+          "options": {}
+        },
+      "name": "Save to Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "save_cache",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Prepare content for Cache Saving\nfor (const item of items) {\n  item.json.result_json = JSON.stringify(item.json);\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "id": "prep_cache",
+      "name": "Prep for Cache"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n  const llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  // ENFORCED STYLE\n  const style = \"flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality\";\n  const fullPrompt = `${subjectPrompt}, ${style}`;\n  \n  const encodedPrompt = encodeURIComponent(fullPrompt);\n  const seed = Math.floor(Math.random() * 10000);\n  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&seed=${seed}`;\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: 'news_' + Math.floor(Math.random()*100000)\n  };\n}\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        224
+      ],
+      "id": "style_url",
+      "name": "Definir Estilo y URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.generated_image_url }}",
+        "options": {
+          "batching": {
+             "batchSize": 1,
+             "batchInterval": 2000
+          }
+        }
+      },
+      "name": "Descargar Imagen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        800,
+        224
+      ],
+      "id": "download_img",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "create",
+        "bucketName": "alphaseeker-assets",
+        "objectName": "={{ 'news-images/' + $json.temp_id + '.jpg' }}",
+        "createData": {},
+        "createQuery": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "name": "Subir a GCS",
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        224
+      ],
+      "id": "upload_gcs",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "qLnNF6lXChjLcSKr",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n   const bucket = 'alphaseeker-assets';\n   let publicUrl = null;\n   \n   if (item.json.name && !item.json.error) {\n       const filename = item.json.name;\n       publicUrl = `https://storage.googleapis.com/${bucket}/${filename}`;\n   }\n   \n   item.json = {\n       ...item.json,\n       title: item.json.title || 'Market News',\n       content_summary: item.json.content_summary || '',\n       published_date: new Date().toISOString(),\n       url: item.json.url || '',\n       source: 'n8n',\n       investment_advice: item.json.investment_advice || {},\n       image_url: publicUrl\n   };\n}\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "prep_final",
+      "name": "Preparar Objeto Final"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news"
+      },
+      "name": "Guardar en Firestore Final",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        224
+      ],
+      "id": "save_final",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "delete",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache",
+        "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown' }}"
+      },
+      "name": "Delete from Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        224
+      ],
+      "id": "delete_cache",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": { "main": [[{ "node": "RSS Read", "type": "main", "index": 0 }]] },
+    "RSS Read": { "main": [[{ "node": "RSS Read1", "type": "main", "index": 0 }]] },
+    "RSS Read1": { "main": [[{ "node": "RSS Read2", "type": "main", "index": 0 }]] },
+    "RSS Read2": { "main": [[{ "node": "Merge RSS", "type": "main", "index": 0 }]] },
+    "Merge RSS": { "main": [[{ "node": "Obtener contenido de noticias", "type": "main", "index": 0 }]] },
+    "Obtener contenido de noticias": {
+        "main": [[
+            { "node": "Get Existing News", "type": "main", "index": 0 }
+        ]]
+    },
+    "Get Existing News": {
+        "main": [[
+            { "node": "Get Cache", "type": "main", "index": 0 }
+        ]]
+    },
+    "Get Cache": {
+        "main": [[
+            { "node": "Deduplicator & Filter", "type": "main", "index": 0 }
+        ]]
+    },
+    "Deduplicator & Filter": {
+        "main": [[
+            { "node": "Is Cached?", "type": "main", "index": 0 }
+        ]]
+    },
+    "Is Cached?": {
+        "main": [
+            [{ "node": "Definir Estilo y URL", "type": "main", "index": 0 }],
+            [{ "node": "Recorrer noticias en lotes", "type": "main", "index": 0 }]
+        ]
+    },
+    "Recorrer noticias en lotes": {
+        "main": [[], [{ "node": "Llamar a la IA en lote", "type": "main", "index": 0 }]]
+    },
+    "Llamar a la IA en lote": {
+        "main": [[{ "node": "Recorrer noticias en lotes", "type": "main", "index": 0 }]]
+    },
+    "Webhook Callback": {
+        "main": [[{ "node": "Split Out", "type": "main", "index": 0 }]]
+    },
+    "Split Out": {
+        "main": [[{ "node": "Prep for Cache", "type": "main", "index": 0 }]]
+    },
+    "Prep for Cache": {
+        "main": [[{ "node": "Save to Cache", "type": "main", "index": 0 }]]
+    },
+    "Save to Cache": {
+        "main": [[{ "node": "Definir Estilo y URL", "type": "main", "index": 0 }]]
+    },
+    "Definir Estilo y URL": {
+        "main": [[{ "node": "Descargar Imagen", "type": "main", "index": 0 }]]
+    },
+    "Descargar Imagen": {
+        "main": [[{ "node": "Subir a GCS", "type": "main", "index": 0 }]]
+    },
+    "Subir a GCS": {
+        "main": [[{ "node": "Preparar Objeto Final", "type": "main", "index": 0 }]]
+    },
+    "Preparar Objeto Final": {
+        "main": [[{ "node": "Guardar en Firestore Final", "type": "main", "index": 0 }]]
+    },
+    "Guardar en Firestore Final": {
+        "main": [[{ "node": "Delete from Cache", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true
+}

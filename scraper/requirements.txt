@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+lxml
+urllib3
+robotexclusionrulesparser
+curl_cffi
+playwright

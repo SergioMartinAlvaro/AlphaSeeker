@@ -1,0 +1,314 @@
+{
+  "name": "AI FINANCIAL",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        96
+      ],
+      "id": "c32715ac-98c9-473f-8dfd-34a733d3b4eb",
+      "name": "When clicking \u2018Execute workflow\u2019"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bloomberg.com/markets/news.rss?limit=50",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e395d621-294e-41d5-9017-f3f557a54908",
+      "name": "RSS Read",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {
+          "customFields": "limit=20"
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b4aa2d39-90fc-4734-9a5e-0c7ea968e4e4",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.investing.com/rss/news.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "9f6a9173-6ead-4acb-9db4-2d7bf4c0b772",
+      "name": "RSS Read2",
+      "alwaysOutputData": true,
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        848,
+        16
+      ],
+      "id": "0d3db737-febf-41fe-97af-822c23665620",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        16
+      ],
+      "id": "cdfc471f-c1cc-4151-9e36-0ecf11459d68",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://python_scraper:8080/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1040,
+        32
+      ],
+      "id": "8c342b52-9a50-47aa-afea-6b1a02f2a427",
+      "name": "Obtener contenido de noticias"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of items) {\n  // 1. EXTRAER EL TEXTO (Del Scraper)\n  const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n\n  // 2. CONSTRUIR EL PROMPT\n  const fullPrompt = `### System Prompt:\nEres un analista financiero experto de Wall Street y un asesor de inversiones de alto nivel.\nTu tarea es analizar la siguiente noticia financiera y generar un informe detallado en formato JSON.\n\nDebes analizar:\n1. **An\u00e1lisis Econ\u00f3mico y de Inversi\u00f3n**: Qu\u00e9 significa esto para la econom\u00eda y los sectores relacionados.\n2. **Consejo de Inversi\u00f3n**: Recomendaciones claras (Comprar, Vender, Mantener) justificadas.\n3. **Impacto Hipot\u00e9tico en el Mercado**: C\u00f3mo podr\u00edan reaccionar las acciones o \u00edndices espec\u00edficos a corto y medio plazo.\n\nLa salida DEBE ser un JSON v\u00e1lido con la siguiente estructura:\n{\n  \"analisis_economico\": \"Texto del an\u00e1lisis...\",\n  \"consejo_inversion\": \"Texto del consejo...\",\n  \"impacto_mercado\": \"Texto del impacto...\",\n  \"tickers_afectados\": [\"TICKER1\", \"TICKER2\"],\n  \"sentimiento\": \"Positivo/Negativo/Neutral\"\n}\n\n### Noticia:\n${raw_text}\n\n### JSON Esperado:`;\n\n  // 3. GUARDAR EN EL ITEM PARA EL SIGUIENTE NODO\n  item.json.prompt_para_api = fullPrompt;\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        32
+      ],
+      "id": "dd614a0d-c722-494b-a777-646bd1f65774",
+      "name": "Normalizar datos"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1712,
+        32
+      ],
+      "id": "f5272ae1-d898-4ea1-ba7f-692130fd229d",
+      "name": "Recorrer noticias en lotes"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/analyze-batch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"noticias\": $input.all().map(item => ({ \"text\": item.json.prompt_para_api })), \"callback_url\": \"http://localhost:5678/webhook-test/webhook-callback\"} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2336,
+        224
+      ],
+      "id": "0243f4c0-2e35-4a55-9902-6713231ad99e",
+      "name": "Llamar a la IA en lote",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-callback",
+        "options": {}
+      },
+      "name": "Webhook Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -200
+      ],
+      "id": "bbd9e797-a504-44b8-99b0-237085bcb812"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "RSS Read2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Obtener contenido de noticias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener contenido de noticias": {
+      "main": [
+        [
+          {
+            "node": "Normalizar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar datos": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorrer noticias en lotes": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Llamar a la IA en lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar a la IA en lote": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Callback": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "aaa0a3dc-6dfb-4436-9cd5-d4a12cf16a19",
+  "meta": {
+    "instanceId": "d8274a17707e70f0ff6db6b0e7beeca124d19aea5f93f62216a309bfa11e237f"
+  },
+  "id": "0sRTS1GkkC6NBIjG",
+  "tags": [
+    {
+      "updatedAt": "2025-11-24T08:00:42.830Z",
+      "createdAt": "2025-11-24T08:00:42.830Z",
+      "id": "VdtK5rv6vqsDS4pQ",
+      "name": "Development"
+    }
+  ]
+}

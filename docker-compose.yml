@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # =========================================================
+  # 1. SERVICIO N8N (WORKFLOWS)
+  # =========================================================
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PROTOCOL=http
+      - NODE_OPTIONS=--max-old-space-size=4096 # Requisito para n8n en entornos grandes
+    volumes:
+      - n8n_data_v2:/home/node/.n8n 
+    restart: unless-stopped
+    networks:
+      - llm_network
+    depends_on:
+      - ollama
+      # - alphaseeker_api # DEPENDENCIA CLAVE
+      - scraper 
+
+  # =========================================================
+  # 2. SERVICIO OLLAMA (LLM)
+  # =========================================================
+  ollama:
+    image: ollama/ollama
+    container_name: ollama_llm
+    platform: linux/arm64 
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - llm_network
+    command: ["serve"]
+
+  # =========================================================
+  # 3. SERVICIO ALPHASEEKER API (La API de tu modelo)
+  # =========================================================
+  # alphaseeker_api:
+  #   build: 
+  #     context: ./llm-api # Usa el contexto del nuevo directorio
+  #     dockerfile: Dockerfile
+  #   container_name: alphaseeker_api
+  #   # Solo expuesto a la red interna (n8n lo llama por el nombre del servicio)
+  #   ports: 
+  #     - "8000:8000" 
+  #   volumes:
+  #     # Mapeos CRÍTICOS para el modelo y entrenamiento:
+  #     - ./llm-api/api_alphaseeker.py:/app/api_alphaseeker.py
+  #     - ./llm-api/AlphaSeeker-8B-v1:/app/AlphaSeeker-8B-v1 # MODELO BASE
+  #     - ./llm-api/adapters:/app/adapters                   # ADAPTADORES (LoRA)
+  #     - ./data:/app/data                                   # DATOS DE FINETUNING
+  #     
+  #   environment:
+  #     # Variable que tu script api_alphaseeker.py usará para encontrar el modelo
+  #     - MODEL_BASE_PATH=/app/AlphaSeeker-8B-v1
+  #     - ADAPTERS_PATH=/app/adapters
+  #   restart: unless-stopped
+  #   networks:
+  #     - llm_network # CONEXIÓN CRÍTICA
+
+  # =========================================================
+  # 4. SERVICIO SCRAPER (Tu aplicación Python/Scraping)
+  # =========================================================
+  scraper:
+    build: 
+      context: ./scraper
+      dockerfile: Dockerfile
+    container_name: python_scraper
+    # Exponer para que n8n lo llame si decides usarlo en lugar de Apify.
+    ports: 
+      - "8080:8080" 
+    volumes:
+      # Mapear el código de tu scraper
+      - ./scraper:/app 
+    restart: unless-stopped
+    networks:
+      - llm_network # CONEXIÓN CRÍTICA
+
+# =========================================================
+# 5. RED Y VOLÚMENES
+# =========================================================
+networks:
+  llm_network:
+    driver: bridge
+
+volumes:
+  n8n_data_v2:
+    external: true 
+  ollama_models:

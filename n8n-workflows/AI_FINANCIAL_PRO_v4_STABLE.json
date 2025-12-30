@@ -1,0 +1,522 @@
+{
+  "name": "AI FINANCIAL PRO v4 (Stable Filtered)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2400,
+        200
+      ],
+      "id": "trigger",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bloomberg.com/markets/news.rss?limit=5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -2200,
+        100
+      ],
+      "id": "rss1",
+      "name": "RSS Read",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {
+          "customFields": "limit=5"
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -2000,
+        100
+      ],
+      "id": "rss2",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.investing.com/rss/news.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -1800,
+        100
+      ],
+      "id": "rss3",
+      "name": "RSS Read2",
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1600,
+        100
+      ],
+      "id": "merge_rss",
+      "name": "Merge RSS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://python-scraper-684822784514.us-central1.run.app/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1400,
+        100
+      ],
+      "id": "scraper",
+      "name": "Obtener contenido de noticias",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.error ? true : false }}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        100
+      ],
+      "id": "filter_errors",
+      "name": "Check Scraper Errors"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news",
+        "options": {
+            "limit": 100
+        },
+        "alwaysOutputData": true
+      },
+      "name": "Get Existing News",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        -1000,
+        100
+      ],
+      "id": "check_final_db",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache",
+        "options": {
+            "limit": 100
+        },
+        "alwaysOutputData": true
+      },
+      "name": "Get Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        100
+      ],
+      "id": "check_cache",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newItems = $('Check Scraper Errors').all(); // Clean items\n// Safely get reference data directly from node execution\n// Note: Reference nodes ran sequentially, so data MUST be there\nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  const url = item.json.link || item.json.url;\n  \n  // Deduplicate\n  if (existingUrls.has(url)) continue;\n\n  // Cache Check\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      // AGENT PROMPT: FINANCIAL ANALYST (STRICT JSON)\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm. Your job is to analyze market news and provide actionable investment insights.\\n\\n### Instructions:\\n1. Analyze the news content below.\\n2. Determine the sentiment and potential market impact.\\n3. Provide investment advice based on the news.\\n4. Create a prompt for an AI image generator to visualize this news.\\n5. OUTPUT MUST BE STRICT VALID JSON ONLY. NO MARKDOWN. NO BACKTICKS.\\n\\n### Content:\\n${raw_text}\\n\\n### Output Schema (JSON Only):\\n{\\n  \"title\": \"Spanish Title (Concise)\",\\n  \"summary\": \"Concise summary of the news content in Spanish\",\\n  \"sentiment\": \"BULLISH | BEARISH | NEUTRAL\",\\n  \"risk_level\": \"LOW | MEDIUM | HIGH\",\\n  \"market_impact\": \"Spanish explanation of impact\",\\n  \"action\": \"BUY | SELL | HOLD\",\\n  \"investment_advice\": { \"rating\": \"...\", \"reasoning\": \"...\" },\\n  \"image_prompt\": \"English detailed prompt for image generation, vector art style\"\\n}`;\n      \n      // ATTACH METADATA FOR PRESERVATION\n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        100
+      ],
+      "id": "deduplicator",
+      "name": "Deduplicator & Filter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_cached }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        100
+      ],
+      "id": "switch_cache",
+      "name": "Is Cached?"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -200,
+        200
+      ],
+      "id": "batch_node",
+      "name": "Recorrer noticias en lotes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGGREGATOR NODE: Combine all items in the batch into a SINGLE request payload\n// This prevents the HTTP Request node from executing multiple times in parallel\n\nconst noticias = items.map(item => ({\n    text: item.json.prompt_para_api,\n    metadata: item.json.metadata_para_api\n}));\n\nreturn [{\n    json: {\n        payload: {\n            noticias: noticias,\n            callback_url: \"http://34.9.244.104:5678/webhook/webhook-callback\"\n        }\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        300
+      ],
+      "id": "aggregator",
+      "name": "Preparar Payload UNICO"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analyze-batch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        100,
+        300
+      ],
+      "id": "llm_call",
+      "name": "Llamar a la IA en lote",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-callback",
+        "options": {}
+      },
+      "name": "Webhook Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -200
+      ],
+      "id": "webhook",
+      "webhookId": "b9ddebfc-a156-4d1d-89b3-fdc91bb66b26"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        200,
+        -200
+      ],
+      "id": "split_out",
+      "name": "Split Out"
+    },
+    {
+        "parameters": {
+          "authentication": "serviceAccount",
+          "operation": "create",
+          "projectId": "alphaseeker-app-2025",
+          "collection": "news_cache",
+          "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown_' + Math.floor(Math.random() * 1000) }}",
+          "columns": "url, result_json",
+          "options": {}
+        },
+      "name": "Save to Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -200
+      ],
+      "id": "save_cache",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Prepare content for Cache Saving\nfor (const item of items) {\n  item.json.result_json = JSON.stringify(item.json);\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -200
+      ],
+      "id": "prep_cache",
+      "name": "Prep for Cache"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n  const llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  // ENFORCED STYLE\n  const style = \"flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality\";\n  const fullPrompt = `${subjectPrompt}, ${style}`;\n  \n  const encodedPrompt = encodeURIComponent(fullPrompt);\n  const seed = Math.floor(Math.random() * 10000);\n  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&seed=${seed}`;\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: 'news_' + Math.floor(Math.random()*100000)\n  };\n}\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ],
+      "id": "style_url",
+      "name": "Definir Estilo y URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.generated_image_url }}",
+        "options": {
+          "batching": {
+             "batchSize": 1,
+             "batchInterval": 2000
+          }
+        }
+      },
+      "name": "Descargar Imagen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        800,
+        0
+      ],
+      "id": "download_img",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "create",
+        "bucketName": "alphaseeker-assets",
+        "objectName": "={{ 'news-images/' + $json.temp_id + '.jpg' }}",
+        "createData": {},
+        "createQuery": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "name": "Subir a GCS",
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        0
+      ],
+      "id": "upload_gcs",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "qLnNF6lXChjLcSKr",
+          "name": "Google Cloud Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n   const bucket = 'alphaseeker-assets';\n   let publicUrl = null;\n   \n   if (item.json.name && !item.json.error) {\n       const filename = item.json.name;\n       publicUrl = `https://storage.googleapis.com/${bucket}/${filename}`;\n   }\n   \n   // EXTREME DATA DISCOVERY (Handle Doubly Nested n8n/Gemini Responses)\n   let data = item.json;\n\n   // 1. Try to parse 'result_json' if it exists (Common in n8n Loop nodes)\n   if (item.json.result_json && typeof item.json.result_json === 'string') {\n       try {\n           const parsed = JSON.parse(item.json.result_json);\n           if (parsed.body && parsed.body['body.results']) {\n               // Found deep data\n               data = parsed.body['body.results'];\n           } else if (parsed.body && parsed.body.results) {\n               data = parsed.body.results;\n           } else {\n               data = parsed;\n           }\n       } catch (e) {\n           console.log('Failed to parse result_json');\n       }\n   }\n   \n   // 2. Direct body checks (Priority: 'body.results' sibling, then nested)\n   // CRITICAL FIX: Do NOT put sibling check in 'else' of body check\n   if (item.json['body.results']) {\n      data = item.json['body.results'];\n   } else if (item.json.body) {\n      if (item.json.body.results) data = item.json.body.results;\n      else if (item.json.body['body.results']) data = item.json.body['body.results'];\n   }\n\n   // 3. Fallback for mixed up keys (sometimes they sit on root)\n   if (!data.title && item.json.noticia_principal) data = item.json;\n\n   // MAP SPANISH KEYS TO ENGLISH SCHEMA\n   item.json = {\n       ...item.json,\n       title: data.noticia_principal || data.titulo_noticia || data.title || 'Market News',\n       content_summary: data.summary || data.resumen || data.content_summary || '',\n       // NEW: Map Full Content from preserved metadata or fallback\n       content: data.source_content || data.metadata?.source_content || data.content || '',\n       published_date: data.fecha_publicacion || new Date().toISOString(),\n       url: data.url || item.json.url || '',\n       source: 'n8n',\n       investment_advice: data.recomendacion_inversion || data.investment_advice || {},\n       market_impact: data.impacto_mercado || data.market_impact || '',\n       risk_level: data.nivel_riesgo || data.risk_level || '',\n       sentiment: data.sentimiento || data.sentiment || '',\n       analysis: data.analisis_financiero || data.analysis || '',\n       action: data.accion_recomendada || data.action || '',\n       image_url: publicUrl\n   };\n}\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "prep_final",
+      "name": "Preparar Objeto Final"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news"
+      },
+      "name": "Guardar en Firestore Final",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        0
+      ],
+      "id": "save_final",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "delete",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache",
+        "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown' }}"
+      },
+      "name": "Delete from Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "delete_cache",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "Google Service Account account",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": { "main": [[{ "node": "RSS Read", "type": "main", "index": 0 }]] },
+    "RSS Read": { "main": [[{ "node": "RSS Read1", "type": "main", "index": 0 }]] },
+    "RSS Read1": { "main": [[{ "node": "RSS Read2", "type": "main", "index": 0 }]] },
+    "RSS Read2": { "main": [[{ "node": "Merge RSS", "type": "main", "index": 0 }]] },
+    "Merge RSS": { "main": [[{ "node": "Obtener contenido de noticias", "type": "main", "index": 0 }]] },
+    "Obtener contenido de noticias": {
+        "main": [[
+            { "node": "Check Scraper Errors", "type": "main", "index": 0 }
+        ]]
+    },
+    "Check Scraper Errors": {
+        "main": [
+            [{ "node": "Get Existing News", "type": "main", "index": 0 }]
+        ]
+    },
+    "Get Existing News": {
+        "main": [[
+            { "node": "Get Cache", "type": "main", "index": 0 }
+        ]]
+    },
+    "Get Cache": {
+        "main": [[
+            { "node": "Deduplicator & Filter", "type": "main", "index": 0 }
+        ]]
+    },
+    "Deduplicator & Filter": {
+        "main": [[
+            { "node": "Is Cached?", "type": "main", "index": 0 }
+        ]]
+    },
+    "Is Cached?": {
+        "main": [
+            [{ "node": "Definir Estilo y URL", "type": "main", "index": 0 }],
+            [{ "node": "Recorrer noticias en lotes", "type": "main", "index": 0 }]
+        ]
+    },
+    "Recorrer noticias en lotes": {
+        "main": [[], [{ "node": "Preparar Payload UNICO", "type": "main", "index": 0 }]]
+    },
+    "Preparar Payload UNICO": {
+        "main": [[{ "node": "Llamar a la IA en lote", "type": "main", "index": 0 }]]
+    },
+    "Llamar a la IA en lote": {
+        "main": [[{ "node": "Recorrer noticias en lotes", "type": "main", "index": 0 }]]
+    },
+    "Webhook Callback": {
+        "main": [[{ "node": "Split Out", "type": "main", "index": 0 }]]
+    },
+    "Split Out": {
+        "main": [[{ "node": "Prep for Cache", "type": "main", "index": 0 }]]
+    },
+    "Prep for Cache": {
+        "main": [[{ "node": "Save to Cache", "type": "main", "index": 0 }]]
+    },
+    "Save to Cache": {
+        "main": [[{ "node": "Definir Estilo y URL", "type": "main", "index": 0 }]]
+    },
+    "Definir Estilo y URL": {
+        "main": [[{ "node": "Descargar Imagen", "type": "main", "index": 0 }]]
+    },
+    "Descargar Imagen": {
+        "main": [[{ "node": "Subir a GCS", "type": "main", "index": 0 }]]
+    },
+    "Subir a GCS": {
+        "main": [[{ "node": "Preparar Objeto Final", "type": "main", "index": 0 }]]
+    },
+    "Preparar Objeto Final": {
+        "main": [[{ "node": "Guardar en Firestore Final", "type": "main", "index": 0 }]]
+    },
+    "Guardar en Firestore Final": {
+        "main": [[{ "node": "Delete from Cache", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true
+}
