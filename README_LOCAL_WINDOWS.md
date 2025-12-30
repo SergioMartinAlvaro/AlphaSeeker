@@ -1,77 +1,62 @@
 # Guía de Instalación para Windows (Entorno Local)
 
-Este documento te guiará paso a paso para ejecutar **AlphaSeeker** en tu ordenador Windows. No necesitas conocimientos avanzados, solo sigue las instrucciones.
+Este documento te guiará paso a paso para ejecutar **AlphaSeeker** en tu ordenador Windows. 
+
+⚠️ **Esta versión es 100% automática.** Se descarga y configura todo solo.
 
 ---
 
 ## 🚀 Requisitos Previos
 
-Antes de empezar, necesitas instalar 3 programas básicos.
+Solo necesitas 2 cosas:
 
-### 1. Git (Control de Versiones)
+### 1. Git
 -   **Descargar**: [https://git-scm.com/download/win](https://git-scm.com/download/win)
--   **Instalación**: Dale a "Siguiente" en todo (opciones por defecto).
+-   Dale a "Siguiente" todo el rato.
 
-### 2. Docker Desktop (Contenedores)
+### 2. Docker Desktop
 -   **Descargar**: [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
--   **Instalación**: Instala y reinicia el ordenador si te lo pide.
--   **Importante**: Abre "Docker Desktop" una vez instalado y espera a que el icono de la ballena se ponga verde (Running).
-
-### 3. Ollama (Tu IA Local)
--   **Descargar**: [https://ollama.com/download/windows](https://ollama.com/download/windows)
--   **Instalación**: Instala como cualquier programa.
--   **Configuración Rápida**:
-    1.  Abre una terminal (Pulsa `Tecla Windows`, escribe `cmd` y dale a Enter).
-    2.  Escribe el siguiente comando y pulsa Enter para descargar el modelo de inteligencia artificial:
-        ```bash
-        ollama pull llama3
-        ```
-    3.  Espera a que termine la descarga (son unos GBs).
+-   Instálalo y ábrelo. Espera a que la barrita de abajo a la izquierda esté en **VERDE**.
 
 ---
 
 ## 🛠️ Puesta en Marcha
 
-### Paso 1: Descargar el Proyecto
-1.  Abre una terminal (`cmd` o `PowerShell`).
-2.  Clona el repositorio (copia y pega):
+### Paso Único: Ejecutar
+1.  Abre una terminal (`cmd` o PowerShell).
+2.  Copia y pega estos comandos:
+
     ```bash
     git clone -b develop-local https://github.com/SergioMartinAlvaro/AlphaSeeker.git
     cd AlphaSeeker
+    docker-compose -f docker-compose.local.yml up --build -d
     ```
 
-### Paso 2: Ejecutar la Aplicación
-En la misma terminal, dentro de la carpeta `AlphaSeeker`, ejecuta:
+**¡Y YA ESTÁ!** 🎉
 
-```bash
-docker-compose -f docker-compose.local.yml up --build -d
-```
-*   *Nota: La primera vez tardará unos minutos en descargar y construir todo.*
+El sistema empezará a descargar:
+1.  La base de datos.
+2.  El servidor web.
+3.  **La Inteligencia Artificial (Llama 3)** <- *Esto tardará un rato (son 4GB), ten paciencia.*
 
 ---
 
-## ✅ ¿Cómo lo uso?
+## ✅ ¿Cómo sé si ya terminó?
 
-Una vez termine el paso anterior, abre tu navegador (Chrome/Edge):
+Espera unos minutos después de ejecutar el comando.
+Entra en: [http://localhost:5678](http://localhost:5678)
 
-1.  **n8n (Tu Panel de Control)**: [http://localhost:5678](http://localhost:5678)
-    -   Crea tu usuario y contraseña.
-    -   Importa tu flujo de trabajo (te pasaré el archivo `.json` aparte o búscalo en la carpeta `n8n-workflows`).
-2.  **API IA (Estado)**: [http://localhost:8080/health](http://localhost:8080/health)
-3.  **Scraper (Estado)**: [http://localhost:8000/health](http://localhost:8000/health)
+Si ves la pantalla de bienvenida de **n8n**, es que todo ha funcionado.
 
 ---
 
 ## ❓ Preguntas Frecuentes
 
-**¿La generación de imágenes no funciona?**
-Correcto. En modo local está desactivada para no complicar la instalación con claves de Google Cloud.
+**¿Tengo que instalar Ollama yo mismo?**
+NO. Docker lo instala por ti dentro de la "caja" de la aplicación.
 
-**¿Ollama va lento?**
-Depende de tu tarjeta gráfica. `llama3` es potente. Si va muy lento, prueba `ollama pull tinyllama` y cambia la configuración en el archivo `docker-compose.local.yml`.
-
-**¿Cómo paro todo?**
-En la terminal, dentro de la carpeta:
+**¿Cómo paro la aplicación?**
+En la terminal, escribe:
 ```bash
 docker-compose -f docker-compose.local.yml down
 ```

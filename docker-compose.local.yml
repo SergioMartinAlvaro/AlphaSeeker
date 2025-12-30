@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. Main Service: n8n Workflow Automation
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -14,14 +15,50 @@ services:
       - N8N_SECURE_COOKIE=false
     volumes:
       - n8n_data:/home/node/.n8n
+    depends_on:
+      - llm-api
 
+  # 2. Local AI Model Service (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    # GPU Support (Commented out for compatibility, uncomment if user has NVIDIA GPU setup in Docker)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # 3. Model Puller (Auto-downloads llama3 on startup)
+  ollama-puller:
+    image: curlimages/curl
+    container_name: ollama-puller
+    depends_on:
+      - ollama
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Ollama to start...';
+      while ! curl -s http://ollama:11434/api/tags > /dev/null; do sleep 5; done;
+      echo 'Ollama is UP. Pulling llama3 model (this may take a while)...';
+      curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"llama3\"}';
+      echo 'Model pulled successfully!';
+      "
+
+  # 4. Web Scraper API
   scraper:
     build: ./scraper
     ports:
-      - "8000:8080" # Exposed on port 8000 locally
+      - "8000:8080"
     environment:
       - PORT=8080
 
+  # 5. Application Logic API
   llm-api:
     build: ./llm-api-cloud
     ports:
@@ -29,11 +66,12 @@ services:
     environment:
       - PORT=8080
       - LLM_PROVIDER=ollama
-      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
+      # Now points to the internal docker service 'ollama'
+      - OLLAMA_URL=http://ollama:11434/api/generate
       - ENABLE_IMAGE_GEN=false
-      - GEMINI_API_KEY= # Optional, leave empty if using Ollama
-    extra_hosts:
-      - "host.docker.internal:host-gateway" # Access host localhost (Windows/Linux)
+    depends_on:
+      - ollama
 
 volumes:
   n8n_data:
+  ollama_data:
