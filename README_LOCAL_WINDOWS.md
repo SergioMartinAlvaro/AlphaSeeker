@@ -20,6 +20,16 @@ Solo necesitas 2 cosas:
 
 ---
 
+### 3. Comprobación Rápida
+Antes de seguir, abre la terminal (`cmd`) y escribe:
+```bash
+docker-compose --version
+```
+-   **Si sale algo como** `Docker Compose version v2...`: ✅ Todo Perfecto.
+-   **Si dice "no se reconoce..."**: ❌ Docker Desktop no se ha instalado bien o necesitas reiniciar el ordenador.
+
+---
+
 ## 🛠️ Puesta en Marcha
 
 ### Paso Único: Ejecutar
@@ -31,6 +41,7 @@ Solo necesitas 2 cosas:
     cd AlphaSeeker
     docker-compose -f docker-compose.local.yml up --build -d
     ```
+    *Nota: Si `docker-compose` te da error, prueba escribiéndolo con espacio: `docker compose ...`*
 
 **¡Y YA ESTÁ!** 🎉
 
