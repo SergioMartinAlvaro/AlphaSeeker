@@ -14,7 +14,38 @@ from src.application.services.job_service import JobService
 
 logger = setup_logger(__name__)
 
-class AnalysisService:
+
+    SYSTEM_PROMPT = """
+    ROLE: You are an expert Financial Analyst (PRO Level).
+    TASK: Analyze the following financial news item and provide actionable intelligence.
+    
+    INSTRUCTIONS:
+    1.  **Analyze**: Determine the 'market_impact' (Short-term vs Long-term).
+    2.  **Sentiment**: Classify as BULLISH, BEARISH, or NEUTRAL.
+    3.  **Action**: Suggest BUY, SELL, or HOLD.
+    4.  **Risk**: Assess risk level (LOW, MEDIUM, HIGH).
+    5.  **Output**: Return strictly valid JSON.
+
+    REQUIRED JSON STRUCTURE:
+    {
+      "title": "Translated title in Spanish",
+      "summary": "Concise summary in Spanish",
+      "market_impact": "Detailed impact analysis in Spanish. MUST NOT BE EMPTY.",
+      "sentiment": "BULLISH|BEARISH|NEUTRAL",
+      "risk_level": "LOW|MEDIUM|HIGH",
+      "action": "BUY|SELL|HOLD",
+      "investment_advice": {
+        "rating": "Buy/Sell/Hold",
+        "reasoning": "Detailed reasoning in Spanish"
+      },
+      "image_prompt": "A futuristic financial concept art description describing the news topic, high quality, 8k"
+    }
+    
+    IMPORTANT: 
+    - If the news is irrelevant or purely generic, set 'market_impact' to "IRRELEVANT" and action "HOLD".
+    - Do NOT return markdown code blocks. Just the JSON object.
+    """
+
     @classmethod
     def process_batch(cls, job_id: str, noticias: List[NewsItem], callback_url: str):
         logger.info(f"[AnalysisJob {job_id}] Processing {len(noticias)} items. Provider: {settings.LLM_PROVIDER}")
@@ -23,32 +54,53 @@ class AnalysisService:
         prompts = [item.text for item in noticias if isinstance(item.text, str)]
         valid_results = []
         
-        for i, prompt in enumerate(tqdm(prompts, desc=f"AnalysisJob {job_id}", unit="item")):
-            try:
-                # Rate Limiting (only for Gemini to avoid quotas, fast for local)
-                if settings.LLM_PROVIDER == "gemini":
-                    time.sleep(10)
-                
-                if settings.LLM_PROVIDER == "ollama":
-                    json_data = OllamaService.call_ollama(prompt)
-                else:
-                    json_data = GeminiService.call_gemini(prompt)
-                
-                # Merge Metadata
-                original_item = noticias[i]
-                if original_item.metadata:
-                    if isinstance(json_data, dict):
-                         json_data = {**json_data, **original_item.metadata}
+        for i, raw_text in enumerate(tqdm(prompts, desc=f"AnalysisJob {job_id}", unit="item")):
+            # Construct Full Prompt with Persona
+            full_prompt = f"{cls.SYSTEM_PROMPT}\n\n--- NEWS CONTENT ---\n{raw_text}"
+            
+            json_data = {}
+            MAX_CONTENT_RETRIES = 2
+            
+            for attempt in range(MAX_CONTENT_RETRIES):
+                try:
+                    # Rate Limiting (Gemini)
+                    if settings.LLM_PROVIDER == "gemini":
+                        time.sleep(5) # Reduced to 5s to speed up retries
+                    
+                    if settings.LLM_PROVIDER == "ollama":
+                        json_data = OllamaService.call_ollama(full_prompt)
                     else:
-                         json_data = {"llm_output": json_data, **original_item.metadata}
+                        json_data = GeminiService.call_gemini(full_prompt)
+                    
+                    # Semantic Validation: Check if it looks like a real analysis
+                    if not json_data.get("market_impact") or json_data.get("market_impact") == "Análisis no concluyente.":
+                         if attempt < MAX_CONTENT_RETRIES - 1:
+                             logger.warning(f"⚠️ Item {i+1}: Analysis inconclusive. Retrying ({attempt+1}/{MAX_CONTENT_RETRIES})...")
+                             continue # Retry loop
+                    
+                    # If we got here, result is likely good or we ran out of retries
+                    break
+                    
+                except Exception as e:
+                    logger.error(f"❌ Item {i+1} attempt {attempt+1} failed: {e}")
+                    if attempt == MAX_CONTENT_RETRIES - 1:
+                        json_data = {"error": "Processing Exception", "detail": str(e)}
 
-                # Validation (Reusing GeminiService logic for default values)
-                json_data = GeminiService.validate_and_fix_response(json_data)
-                valid_results.append(json_data)
-                logger.info(f"✅ Item {i+1} processed")
-            except Exception as e:
-                logger.error(f"❌ Item {i+1} failed: {e}")
-                valid_results.append({"error": "Processing Exception", "detail": str(e)})
+            # Final Fallback Validation
+            json_data = GeminiService.validate_and_fix_response(json_data)
+            
+            # Merge Metadata
+            original_item = noticias[i]
+            if original_item.metadata:
+                # Prioritize existing keys in json_data, fallback to metadata
+                # Actually, we want metadata to persist (like URL) but LLM analysis to prevail
+                if isinstance(json_data, dict):
+                     json_data = {**original_item.metadata, **json_data}
+                else:
+                     json_data = {"llm_output": json_data, **original_item.metadata}
+
+            valid_results.append(json_data)
+            logger.info(f"✅ Item {i+1} processed")
 
         JobService.set_job_results(job_id, valid_results)
         
