@@ -1,5 +1,8 @@
 fastapi
 uvicorn
-google-generativeai>=0.8.3
 requests
-python-dotenv
+google-generativeai
+pydantic
+google-cloud-storage
+pytest
+httpx

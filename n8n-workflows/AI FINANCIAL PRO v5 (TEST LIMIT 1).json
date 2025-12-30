@@ -331,7 +331,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nfor (const item of items) {\n  let llmResult = {};\n  \n  // FIX: Handle 'result_json' string from Cache or Previous Node\n  if (item.json.result_json) {\n      try {\n          const parsed = typeof item.json.result_json === 'string' ? JSON.parse(item.json.result_json) : item.json.result_json;\n          // Unwrap nested 'body.results'\n          if (parsed['body.results']) {\n              llmResult = parsed['body.results'];\n          } else if (parsed.body && parsed.body.results) {\n              llmResult = parsed.body.results;\n          } else {\n              llmResult = parsed;\n          }\n      } catch (e) {\n          console.log('Error parsing result_json', e);\n      }\n  } else if (item.json.result) {\n      // Fallback for legacy format\n       llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  }\n\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  // ENFORCED STYLE\n  const style = \"flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality\";\n  const fullPrompt = `${subjectPrompt}, ${style}`;\n  \n  const encodedPrompt = encodeURIComponent(fullPrompt);\n  const seed = Math.floor(Math.random() * 10000);\n  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&seed=${seed}`;\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: 'news_' + Math.floor(Math.random()*100000)\n  };\n}\nreturn items;\n"
+        "jsCode": "// Prepare Batch Image Request\nconst itemsToSend = items.map(item => {\n    // Ensure we send a valid JSON object\n    const data = item.json;\n    \n    // Parse result_json if it comes from cache logic output\n    // (Usually 'Save to Cache' output might change structure depending on node version, but assume it passes through item.json)\n    \n    // Fallback prompt generation\n    let prompt = data.image_prompt || data.title || \"Financial news\";\n    \n    return {\n        ...data,\n        image_prompt: prompt\n    };\n});\n\nreturn [{\n    json: {\n        items: itemsToSend,\n        callback_url: \"http://34.9.244.104:5678/webhook/webhook-image-callback\"\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -340,16 +340,18 @@
         208
       ],
       "id": "dbf70e73-34d6-41d9-8444-1b516a8bd387",
-      "name": "Definir Estilo y URL"
+      "name": "Prepare Batched Image Request"
     },
     {
       "parameters": {
-        "url": "={{ $json.generated_image_url }}",
-        "options": {
-          "batching": {}
-        }
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/generate-images-batch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
       },
-      "name": "Descargar Imagen",
+      "name": "Call Image Gen API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
@@ -357,46 +359,48 @@
         208
       ],
       "id": "1f31fb26-0cc9-405f-ab2e-0d48620d094d",
-      "disabled": true,
+      "disabled": false,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "resource": "object",
-        "operation": "create",
-        "bucketName": "alphaseeker-assets",
-        "objectName": "={{ 'news-images/' + $json.temp_id + '.jpg' }}",
-        "createData": {},
-        "createQuery": {},
-        "encryptionHeaders": {},
-        "requestOptions": {}
+        "httpMethod": "POST",
+        "path": "webhook-image-callback",
+        "options": {}
       },
-      "name": "Subir a GCS",
-      "type": "n8n-nodes-base.googleCloudStorage",
+      "name": "Image Gen Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        400
+      ],
+      "id": "08d920eb-cee4-40dd-ad87-f0ab00728004"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
         1008,
-        208
+        400
       ],
-      "id": "08d920eb-cee4-40dd-ad87-f0ab00728004",
-      "credentials": {
-        "googleCloudStorageOAuth2Api": {
-          "id": "qLnNF6lXChjLcSKr",
-          "name": "Google Cloud Storage account"
-        }
-      },
-      "disabled": true,
-      "onError": "continueRegularOutput"
+      "id": "b1a23c4d-5678-90ef-1234-567890abcdef",
+      "name": "Split Images"
     },
     {
       "parameters": {
-        "jsCode": "\nconst validItems = [];\n\nfor (const item of items) {\n   // 1. Get Image URL from the previous node's output (Download Image -> Upload GCS usually changes propery, but here we assume we have the public URL)\n   // Note: The previous node was 'Subir a GCS', which returns metadata. We might need to construct the URL or pass it through.\n   // But wait, 'Definir Estilo y URL' already set 'generated_image_url'. \n   // If 'Subir a GCS' output mocks the input item, we check item.json.generated_image_url or construct from temp_id.\n   \n   const bucket = 'alphaseeker-assets';\n   let imageUrl = item.json.generated_image_url || '';\n   \n   // If we just uploaded to GCS, use that permanent URL if available, otherwise rely on the generated one\n   if (item.json.name) {\n       imageUrl = `https://storage.googleapis.com/${bucket}/${item.json.name}`;\n   } else if (item.json.temp_id) {\n        // Fallback construction if name is missing but temp_id exists\n       imageUrl = `https://storage.googleapis.com/${bucket}/news-images/${item.json.temp_id}.jpg`;\n   }\n\n   // 2. DATA SOURCE: The input item.json ALREADY contains the merged LLM results from 'Definir Estilo y URL'\n   const data = item.json;\n\n   // 3. DISCARD FILTER (Logic Kill Switch)\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       console.log('Skipping IRRELEVANT item:', data.title);\n       continue;\n   }\n\n   // 4. MAP & NORMALIZE\n   const normalized = {\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: data.published_date || new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || '',\n       action: data.action || 'HOLD',\n       image_url: imageUrl\n   };\n\n   // 5. VALIDATION\n   if (!normalized.market_impact) {\n       console.log('Skipping due to missing market_impact');\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
+        "jsCode": "\nconst validItems = [];\n\nfor (const item of items) {\n   // 1. Get Image URL from the previous node's output\n   const imageUrl = item.json.generated_image_url || '';\n   \n   // 2. DATA SOURCE: The input item.json\n   const data = item.json;\n\n   // 3. DISCARD FILTER (Logic Kill Switch)\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       console.log('Skipping IRRELEVANT item:', data.title);\n       continue;\n   }\n\n   // 4. MAP & NORMALIZE\n   const normalized = {\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: data.published_date || new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || '',\n       action: data.action || 'HOLD',\n       image_url: imageUrl\n   };\n\n   // 5. VALIDATION\n   if (!normalized.market_impact) {\n       console.log('Skipping due to missing market_impact');\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1200,
-        208
+        400
       ],
       "id": "c647fff2-e8e2-48de-a2ca-5fba9412f37f",
       "name": "Preparar Objeto Final"
@@ -414,7 +418,7 @@
       "typeVersion": 1,
       "position": [
         1408,
-        208
+        400
       ],
       "id": "4746bc05-a86d-451a-b081-542cedbff848",
       "credentials": {
@@ -437,7 +441,7 @@
       "typeVersion": 1,
       "position": [
         1600,
-        208
+        400
       ],
       "id": "e98f9b44-f1bd-4117-84ae-556d4ab8b0a1",
       "credentials": {
@@ -564,7 +568,7 @@
       "main": [
         [
           {
-            "node": "Definir Estilo y URL",
+            "node": "Prepare Batched Image Request",
             "type": "main",
             "index": 0
           }
@@ -660,36 +664,36 @@
       "main": [
         [
           {
-            "node": "Definir Estilo y URL",
+            "node": "Prepare Batched Image Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Definir Estilo y URL": {
+    "Prepare Batched Image Request": {
       "main": [
         [
           {
-            "node": "Descargar Imagen",
+            "node": "Call Image Gen API",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Descargar Imagen": {
+    "Image Gen Webhook": {
       "main": [
         [
           {
-            "node": "Subir a GCS",
+            "node": "Split Images",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Subir a GCS": {
+    "Split Images": {
       "main": [
         [
           {
