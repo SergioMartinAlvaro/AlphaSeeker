@@ -111,4 +111,18 @@ export class FirestoreNewsRepository implements NewsRepository {
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
     }
+
+    async deleteInconclusive(): Promise<number> {
+        const snapshot = await this.collection
+            .where('market_impact', '==', 'Análisis no concluyente.')
+            .get();
+
+        if (snapshot.empty) return 0;
+
+        const batch = admin.firestore().batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        return snapshot.size;
+    }
 }

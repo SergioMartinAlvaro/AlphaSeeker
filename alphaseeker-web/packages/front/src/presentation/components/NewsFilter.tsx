@@ -37,11 +37,12 @@ export const NewsFilter: React.FC<NewsFilterProps> = ({ onFilterChange }) => {
             gap: 2, 
             mb: 4, 
             flexWrap: 'wrap',
-            background: 'rgba(255, 255, 255, 0.8)',
+            background: 'rgba(30, 30, 30, 0.6)', // Darker semi-transparent background
             backdropFilter: 'blur(10px)',
             p: 2,
             borderRadius: 3,
-            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
             <TextField 
                 label="Search by Title" 

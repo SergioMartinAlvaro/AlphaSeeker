@@ -38,5 +38,7 @@ export class NewsService {
         return this.repository.create(item);
     }
 
-
+    async deleteInconclusiveNews(): Promise<number> {
+        return this.repository.deleteInconclusive();
+    }
 }

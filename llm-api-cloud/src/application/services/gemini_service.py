@@ -1,23 +1,35 @@
 import json
 import logging
 import time
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from typing import Dict, Any, List
 from src.infrastructure.config.settings import settings
 from src.infrastructure.logging.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+# Singleton Client
+client = None
 if settings.GEMINI_API_KEY:
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 class GeminiService:
-    
+    @staticmethod
+    def _get_client():
+        global client
+        if not client and settings.GEMINI_API_KEY:
+            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        return client
+
     @staticmethod
     def _repair_json(malformed_text: str, error_detail: str, original_prompt: str = "") -> Dict:
         try:
             logger.info("Attempting to REPAIR JSON with Gemini...")
-            model = genai.GenerativeModel(settings.MODEL_NAME)
+            gen_client = GeminiService._get_client()
+            if not gen_client:
+                raise ValueError("Gemini Client not initialized")
+
             prompt = f"""
             ### TASK:
             You are a JSON Repair Agent.
@@ -34,7 +46,10 @@ class GeminiService:
             ### ORIGINAL CONTEXT:
             {original_prompt[:8000]}
             """
-            response = model.generate_content(prompt)
+            response = gen_client.models.generate_content(
+                model=settings.MODEL_NAME,
+                contents=prompt
+            )
             text = response.text.replace("```json", "").replace("```", "").strip()
             
             import re
@@ -48,31 +63,31 @@ class GeminiService:
 
     @classmethod
     def call_gemini(cls, prompt: str) -> Dict:
-        if not settings.GEMINI_API_KEY:
-             return {"error": "GEMINI_API_KEY not configured"}
+        gen_client = cls._get_client()
+        if not gen_client:
+            return {"error": "GEMINI_API_KEY not configured"}
 
         max_retries = settings.MAX_RETRIES
         retry_delay = settings.RETRY_DELAY
         repair_attempts = 0
 
-        generation_config = {
-            "temperature": 0.2,
-            "top_p": 0.95,
-            "top_k": 64,
-            "max_output_tokens": 8192,
-            "response_mime_type": "application/json",
-        }
+        config = types.GenerateContentConfig(
+            temperature=0.2,
+            top_p=0.95,
+            top_k=64,
+            max_output_tokens=8192,
+            response_mime_type="application/json",
+        )
 
         for attempt in range(max_retries):
             try:
-                model = genai.GenerativeModel(
-                    model_name=settings.MODEL_NAME,
-                    generation_config=generation_config,
-                )
-
                 full_prompt = f"{prompt}\n\nIMPORTANT: Return strictly a JSON object matching the defined schema."
                 
-                response = model.generate_content(full_prompt)
+                response = gen_client.models.generate_content(
+                    model=settings.MODEL_NAME,
+                    contents=full_prompt,
+                    config=config
+                )
                 
                 try:
                     return json.loads(response.text)
@@ -89,18 +104,23 @@ class GeminiService:
                     raise ValueError("Failed to parse JSON")
 
             except Exception as e:
-                if "429" in str(e) or "Quota" in str(e):
+                # Handling quota or 429 errors in the new SDK
+                err_str = str(e)
+                if "429" in err_str or "Quota" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                     logger.warning(f"Quota Exceeded. Retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
                     continue
                 logger.error(f"Gemini Error: {e}")
-                return {"error": "Gemini API Error", "detail": str(e)}
+                return {"error": "Gemini API Error", "detail": err_str}
         
         return {"error": "Max retries exceeded"}
 
     @classmethod
     def validate_and_fix_response(cls, json_data: Dict) -> Dict:
         """Injects defaults if keys are missing."""
+        if not isinstance(json_data, dict):
+            json_data = {}
+            
         if "market_impact" not in json_data or not json_data["market_impact"]:
             json_data["market_impact"] = "Análisis no concluyente."
         

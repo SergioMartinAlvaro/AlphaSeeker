@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/alphaseeker-frontend'
+      - '-f'
+      - 'Dockerfile.frontend'
+      - '--build-arg'
+      - 'VITE_API_URL=$_BACKEND_URL'
+      - '--build-arg'
+      - 'VITE_N8N_WEBHOOK_URL=$_N8N_URL'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/alphaseeker-frontend']
+images:
+  - 'gcr.io/$PROJECT_ID/alphaseeker-frontend'

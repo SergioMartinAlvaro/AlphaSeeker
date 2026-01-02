@@ -63,7 +63,7 @@ class ImageService:
                     logger.info(f"🚫 [ImageJob {job_id}] Image Gen DISABLED. Skipping '{prompt[:15]}...'")
                     image_url = "https://via.placeholder.com/800x600.png?text=Image+Gen+Disabled"
                 else:
-                    logger.info(f"🎨 [ImageJob {job_id}] Generating item {i+1}/{len(items)}: '{prompt[:30]}...'")
+                    logger.info(f"🎨 [ImageJob {job_id}] Generating item {i+1}/{len(items)}. Prompt: '{prompt[:50]}...'")
                 
                 # Rate limit
                 time.sleep(2) 
@@ -71,14 +71,16 @@ class ImageService:
                 img_bytes = cls.generate_without_upload(prompt)
                 if img_bytes:
                     filename = f"news-images/{job_id}_{uuid.uuid4()}.jpg"
+                    logger.info(f"⬆️ [ImageJob {job_id}] Uploading to GCS: {filename}")
                     image_url = cls.upload_to_gcs(img_bytes, filename) or ""
+                    
                     if image_url:
-                        logger.info(f"✅ [ImageJob {job_id}] Uploaded: {image_url}")
+                        logger.info(f"✅ [ImageJob {job_id}] Success! URL: {image_url}")
                     else:
-                        logger.error(f"❌ [ImageJob {job_id}] Upload Failed")
+                        logger.error(f"❌ [ImageJob {job_id}] Upload Failed for {filename}")
                 else:
-                    logger.error(f"❌ [ImageJob {job_id}] Generation Failed")
-            
+                    logger.error(f"❌ [ImageJob {job_id}] Generation Failed for prompt: {prompt[:30]}...")
+                        
             item_data['generated_image_url'] = image_url
             results.append(item_data)
         

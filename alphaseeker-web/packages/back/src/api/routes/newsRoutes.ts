@@ -148,6 +148,17 @@ router.delete('/:id', (req, res) => newsController.deleteNews(req, res));
 
 /**
  * @swagger
+ * /news/cleanup/inconclusive:
+ *   delete:
+ *     summary: Delete news with inconclusive market impact
+ *     responses:
+ *       200:
+ *         description: Deleted count
+ */
+router.delete('/cleanup/inconclusive', (req, res) => newsController.deleteInconclusive(req, res));
+
+/**
+ * @swagger
  * /news/upload:
  *   post:
  *     summary: Upload an image

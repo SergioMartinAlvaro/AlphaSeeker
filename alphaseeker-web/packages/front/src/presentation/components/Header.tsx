@@ -6,8 +6,8 @@ export const Header: React.FC = () => {
     return (
         <AppBar position="static" color="transparent" elevation={0} sx={{ 
             backdropFilter: 'blur(20px)', 
-            background: 'rgba(255,255,255,0.8)', 
-            borderBottom: '1px solid rgba(0,0,0,0.05)',
+            background: 'rgba(20, 20, 20, 0.8)', // Dark header
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
             position: 'sticky',
             top: 0,
             zIndex: 1000
@@ -33,7 +33,7 @@ export const Header: React.FC = () => {
                                 display: { xs: 'flex', md: 'flex' },
                                 fontWeight: 800,
                                 letterSpacing: '-0.02em',
-                                color: '#111',
+                                color: 'text.primary',
                                 textDecoration: 'none',
                             }}
                         >

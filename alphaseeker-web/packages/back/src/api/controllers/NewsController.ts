@@ -131,5 +131,13 @@ export class NewsController {
         }
     }
 
-
+    async deleteInconclusive(req: Request, res: Response): Promise<void> {
+        try {
+            const count = await this.newsService.deleteInconclusiveNews();
+            res.json({ message: `Deleted ${count} inconclusive news items` });
+        } catch (error) {
+            console.error('Error deleting inconclusive news:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
 }

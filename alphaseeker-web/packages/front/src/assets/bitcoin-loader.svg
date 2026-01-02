@@ -1,0 +1,62 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes lineFlow {
+      0% { transform: translateY(0); opacity: 0; }
+      20% { transform: translateY(35px); opacity: 1; }
+      40% { transform: translateY(35px) rotate(45deg); opacity: 0; }
+      60% { transform: translateY(35px) rotate(45deg); opacity: 0; }
+      80% { transform: translateY(70px); opacity: 1; }
+      100% { transform: translateY(100px); opacity: 0; }
+    }
+    
+    @keyframes lineFlowReverse {
+      0% { transform: translateY(0); opacity: 0; }
+      20% { transform: translateY(-35px); opacity: 1; }
+      40% { transform: translateY(-35px) rotate(-45deg); opacity: 0; }
+      60% { transform: translateY(-35px) rotate(-45deg); opacity: 0; }
+      80% { transform: translateY(-70px); opacity: 1; }
+      100% { transform: translateY(-100px); opacity: 0; }
+    }
+
+    /* Pulse animation for the B to keep it alive/breathing */
+    @keyframes bitcoinPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .line-top {
+      fill: #FFF; /* White lines to contrast with Orange BG, or maybe darker orange? Let's use White for visibility behind B or semi-transparent */
+      fill-opacity: 0.7;
+      animation: lineFlow 2s ease-in-out infinite;
+    }
+
+    .line-bottom {
+      fill: #FFF;
+      fill-opacity: 0.7;
+      animation: lineFlowReverse 2s ease-in-out infinite;
+    }
+
+    .bitcoin-b {
+      transform-origin: 50px 50px;
+      animation: bitcoinPulse 3s ease-in-out infinite;
+    }
+  </style>
+
+  <!-- Layer 1: Orange Background Circle (Base) -->
+  <circle cx="50" cy="50" r="50" fill="#F7931A"/>
+
+  <!-- Layer 2: Animated Lines (Behind the B but on top of Circle) -->
+  <rect x="42" y="-20" width="4" height="20" class="line-top" rx="2" />
+  <rect x="54" y="-30" width="4" height="20" class="line-top" rx="2" style="animation-delay: 0.1s" />
+  <rect x="42" y="100" width="4" height="20" class="line-bottom" rx="2" />
+  <rect x="54" y="110" width="4" height="20" class="line-bottom" rx="2" style="animation-delay: 0.1s" />
+
+  <!-- Layer 3: Big White Bitcoin 'B' (Top Layer, covering lines) -->
+  <!-- Scaled up to cover approx 80% -->
+  <g class="bitcoin-b">
+     <!-- Slight drop shadow for depth? Maybe too complex. Flat white. -->
+      <g transform="translate(50, 50) scale(1.1) rotate(14) translate(-50, -50)">
+         <path fill="#FFF" d="M66.9 42.6c1-6.8-4.2-10.5-11.2-12.9 2.2-4.1 3.5-9.6-1.5-14.7l-4.2.8c-1.2.2-4.1.8-4.1.8l1.3-5.2-3.1-.8-1.3 5.3c-0.8-.2-1.6-.4-2.5-.6l1.3-5.3-3.1-.8-1.3 5.2c-0.7-.2-1.3-.3-1.9-.5l-6.8-1.7-1.3 5.3s3.6 0.8 3.5 0.9c2 0.5 2.3 1.7 2.3 2.7l-2.3 22.9c-0.1 0.3-0.5 1.7-2.6 1.2 0.1 0-3.5-0.9-3.5-0.9l-2.4 5.5 6.4 1.6c1.2 0.3 2.3 0.6 3.5 0.8l-1.3 5.3 3.1 0.8 1.3-5.2c0.8 0.2 1.6 0.4 2.5 0.6l-1.3 5.3 3.1 0.8 1.3-5.3c10.5 2 17.7-2.6 18.8-9.9 0.9-6.1-3.6-9.5-7.7-10.7 4.1-0.9 7.2-3.6 7.9-9z m-11.8 17c-1.6 6.3-12.3 2.9-15.8 2l2.8-11.2c3.5 0.9 14.7 2.6 13 9.2z m1.6-17c-1.4 5.8-10.6 2.9-13.6 2.1l2.5-10.2c3 0.8 12.6 2.3 11.1 8.1z"/>
+      </g>
+  </g>
+</svg>

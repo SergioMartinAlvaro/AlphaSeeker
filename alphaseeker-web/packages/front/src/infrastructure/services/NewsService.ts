@@ -1,9 +1,7 @@
 import axios from 'axios';
 import { NewsItem, PaginatedResponse } from '@alphaseeker/shared';
 
-const API_URL = import.meta.env.PROD
-    ? 'https://alphaseeker-back-684822784514.us-central1.run.app/api'
-    : 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export class NewsService {
     async getNews(page: number = 1, limit: number = 10): Promise<PaginatedResponse<NewsItem>> {

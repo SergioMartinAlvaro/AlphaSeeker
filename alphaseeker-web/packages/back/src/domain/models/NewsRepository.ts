@@ -9,4 +9,5 @@ export interface NewsRepository {
     getByDateRange(startDate: Date, endDate: Date): Promise<NewsItem[]>;
     deleteByDateRange(startDate: Date, endDate: Date): Promise<void>;
     deleteOlderThan(date: Date): Promise<void>;
+    deleteInconclusive(): Promise<number>;
 }

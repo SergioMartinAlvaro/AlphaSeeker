@@ -53,4 +53,10 @@ export class InMemoryNewsRepository implements NewsRepository {
     async deleteOlderThan(date: Date): Promise<void> {
         this.news = this.news.filter(n => new Date(n.published_date) >= date);
     }
+
+    async deleteInconclusive(): Promise<number> {
+        const initialCount = this.news.length;
+        this.news = this.news.filter(n => n.market_impact !== 'Análisis no concluyente.');
+        return initialCount - this.news.length;
+    }
 }

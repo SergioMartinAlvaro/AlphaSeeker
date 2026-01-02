@@ -45,7 +45,7 @@ echo ""
 
 # 0. Enable APIs
 echo "--- Enabling Required GCP APIs ---"
-$GCLOUD_CMD services enable run.googleapis.com compute.googleapis.com generativelanguage.googleapis.com
+$GCLOUD_CMD services enable run.googleapis.com compute.googleapis.com generativelanguage.googleapis.com cloudbuild.googleapis.com
 echo "✅ APIs Enabled"
 
 # 1. Ask for Gemini API Key if not present
@@ -83,6 +83,51 @@ $GCLOUD_CMD run deploy $SERVICE_NAME_SCRAPER \
 
 SCRAPER_URL=$($GCLOUD_CMD run services describe $SERVICE_NAME_SCRAPER --region $REGION --format 'value(status.url)')
 echo "✅ Scraper deployed at: $SCRAPER_URL"
+
+# 4. Build and Deploy Backend (Cloud Run)
+echo "--- Building Backend Image ---"
+$GCLOUD_CMD builds submit ./alphaseeker-web \
+    --config=cloudbuild.backend.yaml
+
+echo "--- Deploying Backend Service ---"
+$GCLOUD_CMD run deploy alphaseeker-backend \
+    --image gcr.io/$PROJECT_ID/alphaseeker-backend \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --memory 512Mi \
+    --set-env-vars NODE_ENV=production,PORT=3000 \
+    --port 3000
+
+BACKEND_URL=$($GCLOUD_CMD run services describe alphaseeker-backend --region $REGION --format 'value(status.url)')
+echo "✅ Backend deployed at: $BACKEND_URL"
+
+# 5. Build and Deploy Frontend (Cloud Run)
+echo "--- Building Frontend Image ---"
+# We need to know the Backend URL and n8n URL (VM IP) for the build.
+# Warning: VM_IP might be empty if we skipped creation.
+if [ -z "$VM_IP" ]; then
+    VM_IP=$($GCLOUD_CMD compute instances describe $VM_NAME --zone $ZONE --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+fi
+N8N_URL="http://$VM_IP:5678"
+
+echo "Building Frontend with API_URL=$BACKEND_URL and N8N_URL=$N8N_URL"
+
+$GCLOUD_CMD builds submit ./alphaseeker-web \
+    --config=cloudbuild.frontend.yaml \
+    --substitutions=_BACKEND_URL=$BACKEND_URL/api,_N8N_URL=$N8N_URL
+
+echo "--- Deploying Frontend Service ---"
+$GCLOUD_CMD run deploy alphaseeker-frontend \
+    --image gcr.io/$PROJECT_ID/alphaseeker-frontend \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --memory 512Mi \
+    --port 80
+
+FRONTEND_URL=$($GCLOUD_CMD run services describe alphaseeker-frontend --region $REGION --format 'value(status.url)')
+echo "✅ Frontend deployed at: $FRONTEND_URL"
 
 # 4. create/Check n8n VM (Compute Engine)
 echo "--- Provisioning n8n Server (Compute Engine) ---"

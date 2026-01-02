@@ -4,7 +4,9 @@ import { NewsItem } from '@alphaseeker/shared';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { motion } from 'framer-motion';
+import fallbackImage from '../../assets/placeholder.svg';
 
 interface NewsCardProps {
     item: NewsItem;
@@ -40,6 +42,27 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
     // Truncate title to 200 chars
     const displayTitle = item.title.length > 200 ? item.title.substring(0, 200) + '...' : item.title;
 
+    // Date Formatting
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return '';
+
+        try {
+            return new Intl.DateTimeFormat('es-ES', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        } catch (error) {
+            console.warn('Invalid date format for:', dateString);
+            return '';
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -56,8 +79,8 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                 transition: 'all 0.3s ease',
                 mb: 3,
-                background: '#fff',
-                border: '1px solid rgba(0,0,0,0.05)'
+                background: theme.palette.background.paper, // Use paper theme color
+                border: '1px solid rgba(255,255,255,0.1)' // Clearer border for dark mode
             }}>
                 {/* Image Section - Secondary */}
                 <CardMedia
@@ -68,11 +91,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
                         objectFit: 'cover',
                         flexShrink: 0 // Prevent shrinking on flex layouts
                     }}
-                    image={item.image_url || 'https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&w=800&q=80'}
+                    image={item.image_url || fallbackImage}
                     alt={item.title}
                     onError={(e: any) => {
                         e.target.onerror = null; 
-                        e.target.src = 'https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&w=800&q=80'
+                        e.target.src = fallbackImage;
                     }}
                 />
 
@@ -119,6 +142,14 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
                     {/* 2. CORE CONTENT */}
                     <CardContent sx={{ flex: '1 0 auto', p: '0 !important' }}>
                         
+                        {/* Date Display */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1, color: 'text.secondary', opacity: 0.8 }}>
+                            <AccessTimeIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                                {formatDate(item.published_date)}
+                            </Typography>
+                        </Box>
+
                         {/* Title (Truncated) */}
                         <Typography variant="h6" component="div" sx={{ mb: 2, fontWeight: 700, lineHeight: 1.3, fontSize: '1.1rem' }}>
                             {displayTitle}

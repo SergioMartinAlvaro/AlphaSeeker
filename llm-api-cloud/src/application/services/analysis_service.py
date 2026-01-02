@@ -90,11 +90,33 @@ class AnalysisService:
             # Final Fallback Validation
             json_data = GeminiService.validate_and_fix_response(json_data)
             
+            # --- IMAGE GENERATION & GCS UPLOAD ---
+            if settings.ENABLE_IMAGE_GEN:
+                from src.application.services.image_service import ImageService
+                prompt = json_data.get('image_prompt') or f"financial concept {json_data.get('title', '')}"
+                logger.info(f"🎨 Item {i+1}: Generating image for '{prompt[:30]}...'")
+                
+                # Rate limit for image gen (Pollinations)
+                time.sleep(2)
+                
+                img_bytes = ImageService.generate_without_upload(prompt)
+                if img_bytes:
+                    filename = f"news-images/{job_id}_{uuid.uuid4()}.jpg"
+                    gcs_url = ImageService.upload_to_gcs(img_bytes, filename)
+                    if gcs_url:
+                        json_data['image_url'] = gcs_url
+                        logger.info(f"✅ Item {i+1}: Image uploaded to GCS: {gcs_url}")
+                    else:
+                        logger.error(f"❌ Item {i+1}: GCS upload failed")
+                else:
+                    logger.error(f"❌ Item {i+1}: Image generation failed")
+            # ---------------------------------------
+
             # Merge Metadata
             original_item = noticias[i]
             if original_item.metadata:
                 # Prioritize existing keys in json_data, fallback to metadata
-                # Actually, we want metadata to persist (like URL) but LLM analysis to prevail
+                # Note: 'image_url' in json_data (GCS) should prevail over metadata if present
                 if isinstance(json_data, dict):
                      json_data = {**original_item.metadata, **json_data}
                 else:
