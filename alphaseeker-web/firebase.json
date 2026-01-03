@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "source": "packages/distribution",
+    "runtime": "nodejs18",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firestore-debug.log",
+      "ui-debug.log"
+    ]
+  }
+}
