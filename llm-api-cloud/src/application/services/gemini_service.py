@@ -126,6 +126,9 @@ class GeminiService:
         
         if "sentiment" not in json_data: json_data["sentiment"] = "NEUTRAL"
         if "action" not in json_data: json_data["action"] = "HOLD"
+        if "category" not in json_data: json_data["category"] = "MERCADOS"
+        if "asset_class" not in json_data: json_data["asset_class"] = "ACCIONES"
+        if "tags" not in json_data: json_data["tags"] = []
         
         if "investment_advice" not in json_data:
             json_data["investment_advice"] = {"rating": "Hold", "reasoning": "Insuficiente data."}

@@ -35,6 +35,9 @@ class AnalysisService:
       "sentiment": "BULLISH|BEARISH|NEUTRAL",
       "risk_level": "LOW|MEDIUM|HIGH",
       "action": "BUY|SELL|HOLD",
+      "category": "MERCADOS|MACRO|CRIPTO|CORPORATIVO|DIVISAS|REGULACIÓN|OTROS",
+      "asset_class": "ACCIONES|CRIPTOMONEDAS|FOREX|MATERIAS PRIMAS|ÍNDICES|RENTA FIJA|MULTIASTET",
+      "tags": ["Tag1", "Tag2"],
       "investment_advice": {
         "rating": "Buy/Sell/Hold",
         "reasoning": "Detailed reasoning in Spanish"
@@ -42,7 +45,10 @@ class AnalysisService:
       "image_prompt": "A futuristic financial concept art description describing the news topic, high quality, 8k"
     }
     
-    IMPORTANT: 
+    IMPORTANT CATEGORIZATION RULES:
+    - **category**: Choose the most relevant high-level domain.
+    - **asset_class**: Identify the specific type of asset involved.
+    - **tags**: Include 2-5 relevant tags (tickers, entities, or concepts).
     - If the news is irrelevant or purely generic, set 'market_impact' to "IRRELEVANT" and action "HOLD".
     - Do NOT return markdown code blocks. Just the JSON object.
     """
