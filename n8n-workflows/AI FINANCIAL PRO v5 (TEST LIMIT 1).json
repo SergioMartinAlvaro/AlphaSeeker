@@ -404,10 +404,13 @@
     {
       "parameters": {
         "authentication": "serviceAccount",
-        "operation": "create",
+        "operation": "update",
         "projectId": "alphaseeker-app-2025",
         "collection": "news",
         "documentId": "={{$json.id}}",
+        "options": {
+          "upsert": true
+        },
         "columns": "id,title,content_summary,url,published_date,content,investment_advice,risk_level,analysis,market_impact,sentiment,action,image_url,category,asset_class,tags"
       },
       "name": "Guardar en Firestore Final",
