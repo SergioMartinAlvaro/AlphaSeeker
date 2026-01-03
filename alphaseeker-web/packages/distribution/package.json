@@ -1,0 +1,24 @@
+{
+  "name": "@alphaseeker/distribution",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "@alphaseeker/shared": "*",
+    "axios": "^1.6.2",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3"
+  },
+  "private": true
+}
