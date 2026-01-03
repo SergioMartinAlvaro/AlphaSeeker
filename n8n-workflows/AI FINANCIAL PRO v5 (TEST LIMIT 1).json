@@ -446,6 +446,23 @@
           "name": "Google Service Account account"
         }
       }
+    },
+    {
+      "parameters": {
+        "chatId": "@alphaseeker_finances",
+        "text": "=<b>{{ $json.sentiment === 'BULLISH' ? '🚀' : ($json.sentiment === 'BEARISH' ? '📉' : '⚖️') }} {{ $json.title.toUpperCase() }}</b>\n\n{{ $json.content_summary }}\n\n🚀 <b>Análisis de IA:</b> {{ $json.action }} ({{ $json.risk_level }} RISK)\n\n👇 <i>Lee el análisis detallado y los niveles clave aquí:</i>\nhttps://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-notification-node",
+      "name": "Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        400
+      ]
     }
   ],
   "pinData": {},
@@ -716,6 +733,11 @@
         [
           {
             "node": "Delete from Cache",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram Notification",
             "type": "main",
             "index": 0
           }
