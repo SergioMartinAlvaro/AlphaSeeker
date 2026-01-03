@@ -1,7 +1,7 @@
-import { NewsItem, PaginatedResponse } from '@alphaseeker/shared';
+import { NewsItem, PaginatedResponse, NewsFilters } from '@alphaseeker/shared';
 
 export interface NewsRepository {
-    getAll(limit: number, offset: number): Promise<PaginatedResponse<NewsItem>>;
+    getAll(limit: number, offset: number, filters?: NewsFilters): Promise<PaginatedResponse<NewsItem>>;
     getById(id: string): Promise<NewsItem | null>;
     create(news: NewsItem): Promise<NewsItem>;
     update(id: string, news: Partial<NewsItem>): Promise<NewsItem | null>;

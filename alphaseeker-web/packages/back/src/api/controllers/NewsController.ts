@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { NewsService } from '../../application/services/NewsService';
+import { NewsFilters } from '@alphaseeker/shared';
 import { Storage } from '@google-cloud/storage'; // Assuming installed or will be mocked for now if local URL needed
 import path from 'path';
 
@@ -14,7 +15,19 @@ export class NewsController {
         try {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
-            const result = await this.newsService.getNewsFeed(page, limit);
+
+            const filters: NewsFilters = {
+                title: req.query.title as string,
+                category: req.query.category as string,
+                asset_class: req.query.asset_class as string,
+                sentiment: req.query.sentiment as string,
+                risk_level: req.query.risk_level as string,
+                action: req.query.action as string,
+                startDate: req.query.startDate as string,
+                endDate: req.query.endDate as string
+            };
+
+            const result = await this.newsService.getNewsFeed(page, limit, filters);
             res.json(result);
         } catch (error) {
             console.error('Error fetching news:', error);

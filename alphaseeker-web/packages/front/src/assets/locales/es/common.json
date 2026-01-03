@@ -1,0 +1,65 @@
+{
+  "common": {
+    "app_name": "AlphaSeeker",
+    "search": "Buscar activos...",
+    "search_title": "Buscar en título o contenido...",
+    "advanced_search": "Búsqueda Avanzada",
+    "all_categories": "Todas las Categorías",
+    "all_assets": "Todos los Activos",
+    "all": "Todos",
+    "loading": "Analizando mercado...",
+    "error_loading": "Error al cargar noticias",
+    "read_more": "Leer Análisis IA",
+    "footer_source": "Fuente Original",
+    "sentiment": "SENTIMIENTO",
+    "risk": "RIESGO",
+    "action": "ACCIÓN IA",
+    "start_date": "Fecha Inicio",
+    "end_date": "Fecha Fin",
+    "apply_filters": "Aplicar Filtros",
+    "reset": "Restablecer",
+    "back": "Volver"
+  },
+  "news": {
+    "categories": {
+      "MERCADOS": "Mercados",
+      "CRIPTO": "Cripto",
+      "MACRO": "Macro",
+      "CORPORATIVO": "Corporativo",
+      "DIVISAS": "Divisas",
+      "REGULACIÓN": "Regulación",
+      "OTROS": "Otros"
+    },
+    "asset_classes": {
+      "ACCIONES": "Acciones",
+      "CRIPTOMONEDAS": "Criptomonedas",
+      "FOREX": "Forex",
+      "MATERIAS_PRIMAS": "Materias Primas",
+      "INDICES": "Índices",
+      "RENTA_FIJA": "Renta Fija",
+      "MULTIASTET": "Multiactivo"
+    },
+    "sentiment": {
+      "BULLISH": "Alcista",
+      "NEUTRAL": "Neutral",
+      "BEARISH": "Bajista"
+    },
+    "risk": {
+      "LOW": "Bajo",
+      "MEDIUM": "Medio",
+      "HIGH": "Alto"
+    },
+    "action": {
+      "BUY": "Comprar",
+      "HOLD": "Mantener",
+      "SELL": "Vender"
+    }
+  },
+  "analysis": {
+    "executive_summary": "Resumen Ejecutivo",
+    "impact_analysis": "Análisis de Impacto",
+    "investment_recommendation": "Recomendación de Inversión",
+    "relevant_topics": "TEMAS RELEVANTES",
+    "translating": "Traduciendo análisis..."
+  }
+}

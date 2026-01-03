@@ -1,4 +1,4 @@
-import { NewsItem, PaginatedResponse } from '@alphaseeker/shared';
+import { NewsItem, PaginatedResponse, NewsFilters } from '@alphaseeker/shared';
 import { NewsRepository } from '../../domain/models/NewsRepository';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,9 +7,9 @@ export class NewsService {
         private repository: NewsRepository
     ) { }
 
-    async getNewsFeed(page: number = 1, limit: number = 10): Promise<PaginatedResponse<NewsItem>> {
+    async getNewsFeed(page: number = 1, limit: number = 10, filters?: NewsFilters): Promise<PaginatedResponse<NewsItem>> {
         const offset = (page - 1) * limit;
-        return this.repository.getAll(limit, offset);
+        return this.repository.getAll(limit, offset, filters);
     }
 
     async getNewsById(id: string): Promise<NewsItem | null> {

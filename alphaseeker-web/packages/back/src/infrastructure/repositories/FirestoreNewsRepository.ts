@@ -1,28 +1,51 @@
-import { NewsItem, PaginatedResponse } from '@alphaseeker/shared';
+import { NewsItem, PaginatedResponse, NewsFilters } from '@alphaseeker/shared';
 import { NewsRepository } from '../../domain/models/NewsRepository';
 import * as admin from 'firebase-admin';
 
 export class FirestoreNewsRepository implements NewsRepository {
     private collection = admin.firestore().collection('news');
 
-    async getAll(limit: number, offset: number): Promise<PaginatedResponse<NewsItem>> {
+    async getAll(limit: number, offset: number, filters?: NewsFilters): Promise<PaginatedResponse<NewsItem>> {
         try {
-            // FILTER: Only show news with AI analysis (market_impact present)
-            // DISTINCT & PAGINATION STRATEGY:
-            // Fetch more items than requested to allow for in-memory deduplication
-            const bufferMultiplier = 2; // Fetch 2x limit to filter duplicates safely
-            const fetchLimit = limit * bufferMultiplier;
+            // BASE STRATEGY: 
+            // 1. Fetch from Firestore using date ordering (most common)
+            // 2. Filter in memory for complex combinations to avoid index hell for the user
+            // 3. We fetch more items to compensate for memory filtering
 
-            const snapshot = await this.collection
-                .where('market_impact', '!=', null)
+            let query: admin.firestore.Query = this.collection;
+
+            // Apply simple index-friendly filters first
+            if (filters) {
+                if (filters.category && filters.category !== 'ALL') {
+                    query = query.where('category', '==', filters.category);
+                }
+                if (filters.asset_class && filters.asset_class !== 'ALL') {
+                    query = query.where('asset_class', '==', filters.asset_class);
+                }
+            }
+
+            // Standard order
+            const snapshot = await query
                 .orderBy('published_date', 'desc')
-                .limit(fetchLimit)
-                .offset(offset)
+                .limit(limit * 5) // Fetch a larger window to filter in memory
                 .get();
 
-            const rawData = snapshot.docs.map(doc => {
-                const docData = doc.data();
-                return { id: doc.id, ...docData } as NewsItem;
+            let rawData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as NewsItem));
+
+            // Filtering in memory for everything else (Scalable for thousands, but index-friendly)
+            rawData = rawData.filter(item => {
+                // Must have AI analysis
+                if (!item.market_impact) return false;
+
+                if (filters) {
+                    if (filters.sentiment && filters.sentiment !== 'ALL' && item.sentiment !== filters.sentiment) return false;
+                    if (filters.risk_level && filters.risk_level !== 'ALL' && item.risk_level !== filters.risk_level) return false;
+                    if (filters.action && filters.action !== 'ALL' && item.action !== filters.action) return false;
+                    if (filters.title && !item.title.toLowerCase().includes(filters.title.toLowerCase())) return false;
+                    if (filters.startDate && item.published_date < filters.startDate) return false;
+                    if (filters.endDate && item.published_date > filters.endDate) return false;
+                }
+                return true;
             });
 
             // 1. DEDUPLICATE BY TITLE
@@ -33,32 +56,46 @@ export class FirestoreNewsRepository implements NewsRepository {
                 if (!uniqueTitles.has(item.title)) {
                     uniqueTitles.add(item.title);
                     distinctData.push(item);
-                    if (distinctData.length === limit) break; // Optimization
+                    if (distinctData.length === limit + offset) {
+                        // We found enough items
+                    }
                 }
             }
 
-            // 2. CORRECT TOTAL COUNT (With Filter)
-            const countSnapshot = await this.collection
-                .where('market_impact', '!=', null)
-                .count()
-                .get();
-            const total = countSnapshot.data().count;
+            const pageData = distinctData.slice(offset, offset + limit);
+
+            // 2. TOTAL COUNT Logic
+            // If we have active filters (title, sentiment, risk, action), the 'total'
+            // is basically the number of items we found in our buffer.
+            // If no filters, we can provide a more accurate count from the base query.
+            let total = 0;
+            const hasComplexFilters = filters && (filters.title || filters.sentiment !== 'ALL' || filters.risk_level !== 'ALL' || filters.action !== 'ALL');
+
+            if (hasComplexFilters) {
+                total = distinctData.length;
+            } else {
+                // For simple queries, use the actual count from DB (trying to include market_impact if possible)
+                // Note: We avoid '!= null' count here to prevent missing index errors if user hasn't set them up
+                const countSnapshot = await query.count().get();
+                total = countSnapshot.data().count;
+            }
 
             return {
-                data: distinctData,
-                total,
+                data: pageData,
+                total: total,
                 page: Math.floor(offset / limit) + 1,
                 limit
             };
         } catch (error) {
             console.error('Error fetching news from Firestore:', error);
-            throw error; // Re-throw to be handled by controller
+            throw error;
         }
     }
 
     async getById(id: string): Promise<NewsItem | null> {
         const doc = await this.collection.doc(id).get();
-        return doc.exists ? (doc.data() as NewsItem) : null;
+        if (!doc.exists) return null;
+        return { ...doc.data(), id: doc.id } as NewsItem;
     }
 
     async create(item: NewsItem): Promise<NewsItem> {
@@ -88,7 +125,7 @@ export class FirestoreNewsRepository implements NewsRepository {
             .where('published_date', '<=', endDate.toISOString())
             .orderBy('published_date', 'desc')
             .get();
-        return snapshot.docs.map(doc => doc.data() as NewsItem);
+        return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as NewsItem));
     }
 
     async deleteByDateRange(startDate: Date, endDate: Date): Promise<void> {

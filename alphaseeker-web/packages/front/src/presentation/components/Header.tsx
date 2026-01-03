@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Container, Box } from '@mui/material';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import { LanguageSelector } from './LanguageSelector';
 
 export const Header: React.FC = () => {
     return (
@@ -13,7 +14,7 @@ export const Header: React.FC = () => {
             zIndex: 1000
         }}>
             <Container maxWidth="lg">
-                <Toolbar disableGutters sx={{ minHeight: '80px !important' }}>
+                <Toolbar disableGutters sx={{ minHeight: '80px !important', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                          <Box sx={{ 
                              bgcolor: 'primary.main', 
@@ -30,7 +31,7 @@ export const Header: React.FC = () => {
                             noWrap
                             sx={{
                                 mr: 2,
-                                display: { xs: 'flex', md: 'flex' },
+                                display: { xs: 'none', sm: 'flex' },
                                 fontWeight: 800,
                                 letterSpacing: '-0.02em',
                                 color: 'text.primary',
@@ -40,6 +41,8 @@ export const Header: React.FC = () => {
                             AlphaSeeker
                         </Typography>
                     </Box>
+
+                    <LanguageSelector />
                 </Toolbar>
             </Container>
         </AppBar>

@@ -20,6 +20,11 @@ export interface NewsItem {
     action?: 'BUY' | 'SELL' | 'HOLD' | string;
     analysis?: string;
     investment_advice?: InvestmentAdvice;
+
+    // Categorization
+    category?: string;
+    asset_class?: string;
+    tags?: string[];
 }
 
 export interface PaginatedResponse<T> {
@@ -27,5 +32,16 @@ export interface PaginatedResponse<T> {
     total: number;
     page: number;
     limit: number;
+}
+
+export interface NewsFilters {
+    title?: string;
+    category?: string;
+    asset_class?: string;
+    sentiment?: string;
+    risk_level?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
 }
 

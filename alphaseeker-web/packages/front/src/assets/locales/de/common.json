@@ -1,0 +1,65 @@
+{
+  "common": {
+    "app_name": "AlphaSeeker",
+    "search": "Nach Vermögenswerten suchen...",
+    "search_title": "Suche in Titel oder Inhalt...",
+    "advanced_search": "Erweiterte Suche",
+    "all_categories": "Alle Kategorien",
+    "all_assets": "Alle Vermögenswerte",
+    "all": "Alle",
+    "loading": "Marktanalyse...",
+    "error_loading": "Fehler beim Laden der Nachrichten",
+    "read_more": "KI-Analyse lesen",
+    "footer_source": "Originalquelle",
+    "sentiment": "ESTIMMUNG",
+    "risk": "RISIKO",
+    "action": "KI-AKTION",
+    "start_date": "Startdatum",
+    "end_date": "Enddatum",
+    "apply_filters": "Filter anwenden",
+    "reset": "Zurücksetzen",
+    "back": "Zurück"
+  },
+  "news": {
+    "categories": {
+      "MERCADOS": "Märkte",
+      "CRIPTO": "Krypto",
+      "MACRO": "Makro",
+      "CORPORATIVO": "Unternehmen",
+      "DIVISAS": "Devisen",
+      "REGULACIÓN": "Regulierung",
+      "OTROS": "Andere"
+    },
+    "asset_classes": {
+      "ACCIONES": "Aktien",
+      "CRIPTOMONEDAS": "Kryptowährungen",
+      "FOREX": "Devisenmarkt",
+      "MATERIAS_PRIMAS": "Rohstoffe",
+      "INDICES": "Indizes",
+      "RENTA_FIJA": "Festverzinsliche Wertpapiere",
+      "MULTIASTET": "Multi-Asset"
+    },
+    "sentiment": {
+      "BULLISH": "Bullish",
+      "NEUTRAL": "Neutral",
+      "BEARISH": "Bearish"
+    },
+    "risk": {
+      "LOW": "Niedrig",
+      "MEDIUM": "Mittel",
+      "HIGH": "Hoch"
+    },
+    "action": {
+      "BUY": "Kaufen",
+      "HOLD": "Halten",
+      "SELL": "Verkaufen"
+    }
+  },
+  "analysis": {
+    "executive_summary": "Zusammenfassung",
+    "impact_analysis": "Impact-Analyse",
+    "investment_recommendation": "Anlageempfehlung",
+    "relevant_topics": "RELEVANTE THEMEN",
+    "translating": "Übersetzung der Analyse..."
+  }
+}
