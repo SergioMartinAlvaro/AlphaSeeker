@@ -404,7 +404,7 @@
     {
       "parameters": {
         "authentication": "serviceAccount",
-        "operation": "createOrUpdate",
+        "operation": "upsert",
         "projectId": "alphaseeker-app-2025",
         "collection": "news",
         "updateKey": "id",
