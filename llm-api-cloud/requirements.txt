@@ -3,7 +3,8 @@ uvicorn
 requests
 google-genai
 python-dotenv
-tqdm>=4.66.0tic
+tqdm>=4.66.0
 google-cloud-storage
 pytest
 httpx
+gradio_client

@@ -1,7 +1,7 @@
 import time
 import requests
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from tqdm import tqdm
 from google.cloud import storage
 from src.infrastructure.config.settings import settings
@@ -25,7 +25,43 @@ class ImageService:
             return None
 
     @staticmethod
-    def generate_without_upload(prompt: str) -> bytes:
+    def generate_with_gradio(prompt: str) -> Optional[bytes]:
+        try:
+            from gradio_client import Client
+            import os
+            
+            logger.info(f"✨ Intentando generar con Gradio (Space: {settings.GRADIO_SPACE})...")
+            client = Client(settings.GRADIO_SPACE)
+            
+            # El modelo FLUX.1-schnell suele recibir (prompt, seed, width, height, num_inference_steps)
+            # pero la API de Gradio puede variar. Generalmente es .predict()
+            result = client.predict(
+                prompt=prompt,
+                seed=0,
+                width=800,
+                height=600,
+                num_inference_steps=4, # Schnell es rápido con pocos pasos
+                api_name="/predict"
+            )
+            
+            # El resultado suele ser una ruta temporal a un archivo de imagen o un objeto JSON
+            # Dependiendo del espacio, puede devolver una tupla o un string
+            image_path = result
+            if isinstance(result, (list, tuple)):
+                image_path = result[0]
+                
+            if isinstance(image_path, str) and os.path.exists(image_path):
+                with open(image_path, "rb") as f:
+                    return f.read()
+            
+            logger.warning(f"⚠️ Gradio no devolvió una ruta de archivo válida: {result}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error en Gradio: {e}")
+            return None
+
+    @staticmethod
+    def generate_with_pollinations(prompt: str) -> Optional[bytes]:
         max_retries = 3
         timeout = 60 # Aumentado de 30 a 60
         
@@ -66,6 +102,21 @@ class ImageService:
                 logger.error(f"❌ Pollinations Error inesperado: {e}")
                 break
         return None
+
+    @staticmethod
+    def generate_without_upload(prompt: str) -> Optional[bytes]:
+        # 1. Intentar Gradio (Principal)
+        img_bytes = ImageService.generate_with_gradio(prompt)
+        if img_bytes:
+            # Detección de seguridad mínima para Gradio también
+            if len(img_bytes) > 5000:
+                logger.info("✅ Imagen generada con éxito en Gradio.")
+                return img_bytes
+            logger.warning("⚠️ Imagen de Gradio demasiado pequeña, saltando a Pollinations.")
+
+        # 2. Intentar Pollinations (Respaldo)
+        logger.info("🔄 Saltando a Pollinations AI como respaldo...")
+        return ImageService.generate_with_pollinations(prompt)
 
     @classmethod
     def process_batch(cls, job_id: str, items: List[Dict[str, Any]], callback_url: str):
