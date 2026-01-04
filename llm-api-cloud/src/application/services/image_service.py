@@ -31,7 +31,7 @@ class ImageService:
             import os
             
             logger.info(f"✨ Intentando generar con Gradio (Space: {settings.GRADIO_SPACE})...")
-            client = Client(settings.GRADIO_SPACE)
+            client = Client(settings.GRADIO_SPACE, hf_token=settings.HF_TOKEN if settings.HF_TOKEN else None)
             
             # El modelo FLUX.1-schnell suele recibir (prompt, seed, width, height, num_inference_steps)
             # pero la API de Gradio puede variar. Generalmente es .predict()

@@ -16,5 +16,6 @@ class Settings:
     OLLAMA_URL: str = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
     ENABLE_IMAGE_GEN: bool = os.environ.get("ENABLE_IMAGE_GEN", "True").lower() == "true"
     GRADIO_SPACE: str = os.environ.get("GRADIO_SPACE", "black-forest-labs/FLUX.1-schnell")
+    HF_TOKEN: str = os.environ.get("HF_TOKEN", "")
 
 settings = Settings()
