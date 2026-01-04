@@ -54,9 +54,15 @@ class GeminiService:
             
             import re
             match = re.search(r'(\{.*\})', text, re.DOTALL)
+            data = {}
             if match:
-                return json.loads(match.group(1))
-            return json.loads(text)
+                data = json.loads(match.group(1))
+            else:
+                data = json.loads(text)
+            
+            if isinstance(data, list) and len(data) > 0:
+                return data[0]
+            return data
         except Exception as e:
             logger.error(f"JSON Repair Failed: {e}")
             raise e
@@ -90,12 +96,18 @@ class GeminiService:
                 )
                 
                 try:
-                    return json.loads(response.text)
+                    data = json.loads(response.text)
+                    if isinstance(data, list) and len(data) > 0:
+                        return data[0]
+                    return data
                 except Exception as e:
                     import re
                     match = re.search(r'(\{.*\})', response.text, re.DOTALL)
                     if match:
-                        return json.loads(match.group(1))
+                        data = json.loads(match.group(1))
+                        if isinstance(data, list) and len(data) > 0:
+                            return data[0]
+                        return data
                     
                     if repair_attempts < settings.MAX_REPAIRS:
                          logger.warning(f"JSON Parse failed. Attempting Repair {repair_attempts+1}")

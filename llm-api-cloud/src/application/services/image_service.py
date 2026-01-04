@@ -10,6 +10,7 @@ from src.infrastructure.logging.logger import setup_logger
 logger = setup_logger(__name__)
 
 class ImageService:
+    PLACEHOLDER_URL = "https://alphaseeker-frontend-684822784514.us-central1.run.app/assets/news_placeholder-gnqQM7N-.png"
 
     @staticmethod
     def upload_to_gcs(image_content: bytes, destination_blob_name: str) -> str:
@@ -25,19 +26,46 @@ class ImageService:
 
     @staticmethod
     def generate_without_upload(prompt: str) -> bytes:
-        try:
-            style = "flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality"
-            full_prompt = f"{prompt}, {style}"
-            encoded_prompt = requests.utils.quote(full_prompt)
-            seed = int(time.time() * 1000) % 10000
-            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={seed}"
-            
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            return response.content
-        except Exception as e:
-            logger.error(f"Pollinations Error: {e}")
-            return None
+        max_retries = 3
+        timeout = 60 # Aumentado de 30 a 60
+        
+        for attempt in range(max_retries):
+            try:
+                style = "flat vector art, modern corporate memphis style, financial technology aesthetic, minimalist, clean lines, vibrant blue and white colors, high quality"
+                full_prompt = f"{prompt}, {style}"
+                encoded_prompt = requests.utils.quote(full_prompt)
+                # Seed dinámico para variar si hay reintentos
+                seed = int(time.time() * 1000) % 10000 + attempt
+                url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={seed}"
+                
+                logger.info(f"🎨 Intentando generar imagen (Intento {attempt + 1}/{max_retries})...")
+                response = requests.get(url, timeout=timeout)
+                response.raise_for_status()
+                
+                # Robust detection of rate limit / error images
+                content = response.content
+                if len(content) < 5000: # Un 800x600 real suele ser > 30KB
+                    logger.warning(f"⚠️ Pollinations devolvió contenido sospechosamente pequeño ({len(content)} bytes).")
+                    return None
+                    
+                if b"rate limit" in content.lower():
+                    logger.warning("⚠️ Detectado 'Rate Limit' en el contenido de la imagen.")
+                    return None
+
+                return content
+                
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                logger.warning(f"⚠️ Error temporal en Pollinations (Intento {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5
+                    logger.info(f"🕒 Reintentando en {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"❌ Agotados los reintentos para generar imagen: {e}")
+            except Exception as e:
+                logger.error(f"❌ Pollinations Error inesperado: {e}")
+                break
+        return None
 
     @classmethod
     def process_batch(cls, job_id: str, items: List[Dict[str, Any]], callback_url: str):
@@ -61,7 +89,7 @@ class ImageService:
             if prompt:
                 if not settings.ENABLE_IMAGE_GEN:
                     logger.info(f"🚫 [ImageJob {job_id}] Image Gen DISABLED. Skipping '{prompt[:15]}...'")
-                    image_url = "https://via.placeholder.com/800x600.png?text=Image+Gen+Disabled"
+                    image_url = cls.PLACEHOLDER_URL
                 else:
                     logger.info(f"🎨 [ImageJob {job_id}] Generating item {i+1}/{len(items)}. Prompt: '{prompt[:50]}...'")
                 
@@ -81,6 +109,9 @@ class ImageService:
                 else:
                     logger.error(f"❌ [ImageJob {job_id}] Generation Failed for prompt: {prompt[:30]}...")
                         
+            if not image_url:
+                image_url = cls.PLACEHOLDER_URL
+
             item_data['generated_image_url'] = image_url
             results.append(item_data)
         

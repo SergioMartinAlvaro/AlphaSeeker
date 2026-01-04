@@ -80,7 +80,7 @@ class AnalysisService:
                         json_data = GeminiService.call_gemini(full_prompt)
                     
                     # Semantic Validation: Check if it looks like a real analysis
-                    if not json_data.get("market_impact") or json_data.get("market_impact") == "Análisis no concluyente.":
+                    if not isinstance(json_data, dict) or not json_data.get("market_impact") or json_data.get("market_impact") == "Análisis no concluyente.":
                          if attempt < MAX_CONTENT_RETRIES - 1:
                              logger.warning(f"⚠️ Item {i+1}: Analysis inconclusive. Retrying ({attempt+1}/{MAX_CONTENT_RETRIES})...")
                              continue # Retry loop
