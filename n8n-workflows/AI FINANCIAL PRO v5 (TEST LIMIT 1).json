@@ -405,8 +405,8 @@
       "parameters": {
         "authentication": "serviceAccount",
         "operation": "update",
-        "projectId": "alphaseeker-app-2025",
-        "collection": "news",
+        "projectId": "=alphaseeker-app-2025",
+        "collection": "=news",
         "documentId": "={{$json.id}}",
         "options": {
           "upsert": true
