@@ -44,6 +44,13 @@ export class FirestoreNewsRepository implements NewsRepository {
                     if (filters.title && !item.title.toLowerCase().includes(filters.title.toLowerCase())) return false;
                     if (filters.startDate && item.published_date < filters.startDate) return false;
                     if (filters.endDate && item.published_date > filters.endDate) return false;
+
+                    // Hashtag filtering
+                    if (filters.tags && filters.tags.length > 0) {
+                        const normalizedFilters = filters.tags.map(t => t.startsWith('#') ? t.substring(1).toLowerCase() : t.toLowerCase());
+                        const itemTags = (item.tags || []).map(t => t.toLowerCase());
+                        if (!normalizedFilters.every(tag => itemTags.includes(tag))) return false;
+                    }
                 }
                 return true;
             });
@@ -56,26 +63,18 @@ export class FirestoreNewsRepository implements NewsRepository {
                 if (!uniqueTitles.has(item.title)) {
                     uniqueTitles.add(item.title);
                     distinctData.push(item);
-                    if (distinctData.length === limit + offset) {
-                        // We found enough items
-                    }
                 }
             }
 
             const pageData = distinctData.slice(offset, offset + limit);
 
             // 2. TOTAL COUNT Logic
-            // If we have active filters (title, sentiment, risk, action), the 'total'
-            // is basically the number of items we found in our buffer.
-            // If no filters, we can provide a more accurate count from the base query.
             let total = 0;
-            const hasComplexFilters = filters && (filters.title || filters.sentiment !== 'ALL' || filters.risk_level !== 'ALL' || filters.action !== 'ALL');
+            const hasComplexFilters = filters && (filters.title || filters.sentiment !== 'ALL' || filters.risk_level !== 'ALL' || filters.action !== 'ALL' || (filters.tags && filters.tags.length > 0));
 
             if (hasComplexFilters) {
                 total = distinctData.length;
             } else {
-                // For simple queries, use the actual count from DB (trying to include market_impact if possible)
-                // Note: We avoid '!= null' count here to prevent missing index errors if user hasn't set them up
                 const countSnapshot = await query.count().get();
                 total = countSnapshot.data().count;
             }
@@ -121,8 +120,8 @@ export class FirestoreNewsRepository implements NewsRepository {
 
     async getByDateRange(startDate: Date, endDate: Date): Promise<NewsItem[]> {
         const snapshot = await this.collection
-            .where('published_date', '>=', startDate.toISOString())
-            .where('published_date', '<=', endDate.toISOString())
+            .where('published_date', '>=', startDate)
+            .where('published_date', '<=', endDate)
             .orderBy('published_date', 'desc')
             .get();
         return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as NewsItem));
@@ -130,8 +129,8 @@ export class FirestoreNewsRepository implements NewsRepository {
 
     async deleteByDateRange(startDate: Date, endDate: Date): Promise<void> {
         const snapshot = await this.collection
-            .where('published_date', '>=', startDate.toISOString())
-            .where('published_date', '<=', endDate.toISOString())
+            .where('published_date', '>=', startDate)
+            .where('published_date', '<=', endDate)
             .get();
 
         const batch = admin.firestore().batch();
@@ -141,7 +140,7 @@ export class FirestoreNewsRepository implements NewsRepository {
 
     async deleteOlderThan(date: Date): Promise<void> {
         const snapshot = await this.collection
-            .where('published_date', '<', date.toISOString())
+            .where('published_date', '<', date)
             .get();
 
         const batch = admin.firestore().batch();
@@ -163,3 +162,4 @@ export class FirestoreNewsRepository implements NewsRepository {
         return snapshot.size;
     }
 }
+

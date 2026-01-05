@@ -33,15 +33,10 @@ class ImageService:
             logger.info(f"✨ Intentando generar con Gradio (Space: {settings.GRADIO_SPACE})...")
             client = Client(settings.GRADIO_SPACE, token=settings.HF_TOKEN if settings.HF_TOKEN else None)
             
-            # El modelo FLUX.1-schnell suele recibir (prompt, seed, width, height, num_inference_steps)
-            # pero la API de Gradio puede variar. Generalmente es .predict()
+            # La mayoría de espacios de FLUX usan /infer y pueden ser más flexibles con los parámetros
             result = client.predict(
                 prompt=prompt,
-                seed=0,
-                width=800,
-                height=600,
-                num_inference_steps=4, # Schnell es rápido con pocos pasos
-                api_name="/predict"
+                api_name="/infer"
             )
             
             # El resultado suele ser una ruta temporal a un archivo de imagen o un objeto JSON

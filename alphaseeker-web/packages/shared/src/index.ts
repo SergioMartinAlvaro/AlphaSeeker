@@ -43,5 +43,6 @@ export interface NewsFilters {
     action?: string;
     startDate?: string;
     endDate?: string;
+    tags?: string[];
 }
 

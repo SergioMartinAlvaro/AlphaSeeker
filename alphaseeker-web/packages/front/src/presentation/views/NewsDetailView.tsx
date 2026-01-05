@@ -8,7 +8,9 @@ import {
     Divider, 
     IconButton, 
     CircularProgress, 
-    Paper
+    Paper,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, TrendingUp, Warning, HelpOutline } from '@mui/icons-material';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -17,16 +19,21 @@ import { newsService } from '../../infrastructure/services/NewsService';
 import { Header } from '../components/Header';
 import { useTranslation } from 'react-i18next';
 import { translationService } from '../../infrastructure/services/TranslationService';
+import { useNewsStore } from '../store/useNewsStore';
 import newsPlaceholder from '../../assets/news_placeholder.png';
 
 export function NewsDetailView() {
     const { t, i18n } = useTranslation();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { addHashtag } = useNewsStore();
+    
     const [item, setItem] = useState<NewsItem | null>(null);
     const [displayItem, setDisplayItem] = useState<NewsItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [translating, setTranslating] = useState(false);
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [selectedTag, setSelectedTag] = useState('');
 
     const { scrollY } = useScroll();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
@@ -75,6 +82,12 @@ export function NewsDetailView() {
         }
     };
 
+    const handleTagClick = (tag: string) => {
+        addHashtag(tag);
+        setSelectedTag(tag);
+        setSnackbarOpen(true);
+    };
+
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: 'background.default' }}>
@@ -110,7 +123,6 @@ export function NewsDetailView() {
         if (dateValue instanceof Date) {
             date = dateValue;
         } else if (typeof dateValue === 'object') {
-            // Manejar Timestamp de Firestore (seconds/nanoseconds o _seconds/_nanoseconds)
             const seconds = dateValue.seconds ?? dateValue._seconds;
             if (seconds !== undefined) {
                 date = new Date(seconds * 1000);
@@ -118,7 +130,6 @@ export function NewsDetailView() {
                 date = new Date(dateValue);
             }
         } else if (typeof dateValue === 'string') {
-            // Normalización para strings ISO con microsegundos
             const normalizedDate = dateValue.includes('.') 
                 ? dateValue.split('.')[0] + '.' + dateValue.split('.')[1].substring(0, 3).replace('Z', '') + 'Z'
                 : dateValue;
@@ -165,7 +176,6 @@ export function NewsDetailView() {
                     />
                 </motion.div>
                 
-                {/* Overlay with Title */}
                 <Box sx={{
                     position: 'absolute',
                     bottom: 0,
@@ -215,7 +225,6 @@ export function NewsDetailView() {
                 </Box>
             </Box>
 
-            {/* Content Section */}
             <Container maxWidth="md" sx={{ mt: -4, position: 'relative', zIndex: 10, pb: 10 }}>
                 <Paper sx={{ 
                     p: { xs: 3, md: 5 }, 
@@ -234,7 +243,6 @@ export function NewsDetailView() {
                          </Box>
                     )}
 
-                    {/* Sentiment & Action Row */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 6, flexWrap: 'wrap', gap: 2 }}>
                         <Box>
                             <Typography variant="overline" color="text.secondary">{t('common.sentiment')}</Typography>
@@ -268,7 +276,6 @@ export function NewsDetailView() {
                         </Box>
                     </Box>
 
-                    {/* Summary */}
                     <Box sx={{ mb: 6 }}>
                         <Typography variant="h5" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Box sx={{ width: 4, height: 24, bgcolor: 'primary.main', borderRadius: 1 }} />
@@ -281,7 +288,6 @@ export function NewsDetailView() {
 
                     <Divider sx={{ my: 6, borderColor: 'rgba(255,255,255,0.05)' }} />
 
-                    {/* Impact Analysis */}
                     <Box sx={{ mb: 6 }}>
                         <Typography variant="h5" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Box sx={{ width: 4, height: 24, bgcolor: 'primary.main', borderRadius: 1 }} />
@@ -292,7 +298,6 @@ export function NewsDetailView() {
                         </Typography>
                     </Box>
 
-                    {/* Investment Advice Box */}
                     {displayItem.investment_advice && (
                         <Box sx={{ 
                             p: 4, 
@@ -319,24 +324,50 @@ export function NewsDetailView() {
                     {/* Tags */}
                     <Box sx={{ mt: 4 }}>
                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>{t('analysis.relevant_topics')}</Typography>
-                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                              {displayItem.tags?.map(tag => (
                                  <Typography 
                                     key={tag} 
                                     variant="body2" 
+                                    onClick={() => handleTagClick(tag)}
                                     sx={{ 
                                         color: 'primary.main', 
-                                        fontWeight: 600,
-                                        '&:hover': { textDecoration: 'underline', cursor: 'pointer' }
+                                        fontWeight: 700,
+                                        fontSize: '1rem',
+                                        transition: 'all 0.2s',
+                                        '&:hover': { 
+                                            textDecoration: 'none', 
+                                            cursor: 'pointer',
+                                            transform: 'scale(1.05)',
+                                            color: 'primary.light'
+                                        }
                                     }}
                                 >
-                                     #{tag.replace(/\s+/g, '')}
+                                     #{tag.startsWith('#') ? tag.slice(1) : tag}
                                  </Typography>
                              ))}
                          </Box>
                     </Box>
                 </Paper>
             </Container>
+
+            {/* Notification Snackbar */}
+            <Snackbar 
+                open={snackbarOpen} 
+                autoHideDuration={3000} 
+                onClose={() => setSnackbarOpen(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert 
+                    onClose={() => setSnackbarOpen(false)} 
+                    severity="success" 
+                    variant="filled"
+                    sx={{ width: '100%', borderRadius: 2, fontWeight: 600 }}
+                >
+                    {t('common.filter_added', { defaultValue: 'Filtro añadido: ' })}{selectedTag}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
+

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { NewsService } from '../../application/services/NewsService';
-import { NewsFilters } from '@alphaseeker/shared';
+import { NewsFilters, NewsItem } from '@alphaseeker/shared';
 import { Storage } from '@google-cloud/storage'; // Assuming installed or will be mocked for now if local URL needed
 import path from 'path';
 
@@ -16,6 +16,13 @@ export class NewsController {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
 
+            const parseTags = (query: any): string[] => {
+                const tagsQuery = query.tags || query['tags[]'];
+                if (!tagsQuery) return [];
+                if (Array.isArray(tagsQuery)) return tagsQuery.map(t => String(t).trim());
+                return String(tagsQuery).split(',').map(t => t.trim()).filter(Boolean);
+            };
+
             const filters: NewsFilters = {
                 title: req.query.title as string,
                 category: req.query.category as string,
@@ -24,7 +31,8 @@ export class NewsController {
                 risk_level: req.query.risk_level as string,
                 action: req.query.action as string,
                 startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string
+                endDate: req.query.endDate as string,
+                tags: parseTags(req.query)
             };
 
             const result = await this.newsService.getNewsFeed(page, limit, filters);
@@ -122,6 +130,7 @@ export class NewsController {
             }
             res.json(result);
         } catch (error) {
+            console.error('Error updating news:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     }
@@ -154,3 +163,4 @@ export class NewsController {
         }
     }
 }
+

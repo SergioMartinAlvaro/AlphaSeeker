@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Box, 
     TextField, 
@@ -8,35 +8,37 @@ import {
     Typography, 
     IconButton,
     Collapse,
-    Tooltip
+    Tooltip,
+    Chip
 } from '@mui/material';
 import { 
     FilterList as FilterIcon, 
     RestartAlt as ResetIcon,
     ExpandMore as ExpandIcon,
-    ExpandLess as ContractIcon
+    ExpandLess as ContractIcon,
+    Tag as TagIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { NewsFilters } from '@alphaseeker/shared';
+import { useNewsStore } from '../store/useNewsStore';
 
-interface AdvancedSearchPanelProps {
-    filters: NewsFilters;
-    onFiltersChange: (filters: NewsFilters) => void;
-    onApply: () => void;
-    onReset: () => void;
-}
-
-export const AdvancedSearchPanel: React.FC<AdvancedSearchPanelProps> = ({ 
-    filters, 
-    onFiltersChange, 
-    onApply, 
-    onReset 
-}) => {
+export const AdvancedSearchPanel: React.FC = () => {
     const { t } = useTranslation();
-    const [expanded, setExpanded] = React.useState(false);
+    const { filters, setFilters, applyFilters, resetFilters, removeHashtag, addHashtag } = useNewsStore();
+    const [expanded, setExpanded] = useState(false);
+    const [hashtagInput, setHashtagInput] = useState('');
 
-    const handleChange = (field: keyof NewsFilters) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        onFiltersChange({ ...filters, [field]: e.target.value });
+    const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFilters({ [field]: e.target.value });
+    };
+
+    const handleHashtagKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            if (hashtagInput.trim()) {
+                addHashtag(hashtagInput.trim());
+                setHashtagInput('');
+            }
+        }
     };
 
     return (
@@ -56,7 +58,7 @@ export const AdvancedSearchPanel: React.FC<AdvancedSearchPanelProps> = ({
                 </Box>
                 <Box>
                     <Tooltip title={t('common.reset')}>
-                        <IconButton onClick={onReset} size="small" sx={{ mr: 1, color: 'text.secondary' }}>
+                        <IconButton onClick={resetFilters} size="small" sx={{ mr: 1, color: 'text.secondary' }}>
                             <ResetIcon />
                         </IconButton>
                     </Tooltip>
@@ -77,6 +79,35 @@ export const AdvancedSearchPanel: React.FC<AdvancedSearchPanelProps> = ({
                             onChange={handleChange('title')}
                             size="small"
                         />
+                    </Grid>
+
+                    {/* Hashtags */}
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            fullWidth
+                            label="Hashtags (e.g. #BTC, #Trading)"
+                            placeholder="Press Enter or comma to add"
+                            value={hashtagInput}
+                            onChange={(e) => setHashtagInput(e.target.value)}
+                            onKeyDown={handleHashtagKeyDown}
+                            size="small"
+                            InputProps={{
+                                startAdornment: <TagIcon sx={{ color: 'text.secondary', mr: 1, fontSize: 20 }} />
+                            }}
+                        />
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+                            {filters.tags?.map((tag) => (
+                                <Chip 
+                                    key={tag} 
+                                    label={tag} 
+                                    onDelete={() => removeHashtag(tag)}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ fontWeight: 600, borderStyle: 'dashed' }}
+                                />
+                            ))}
+                        </Box>
                     </Grid>
 
                     {/* Sentimiento */}
@@ -130,11 +161,11 @@ export const AdvancedSearchPanel: React.FC<AdvancedSearchPanelProps> = ({
                         </TextField>
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', alignItems: 'flex-start' }}>
                         <Button 
                             fullWidth 
                             variant="contained" 
-                            onClick={onApply}
+                            onClick={applyFilters}
                             sx={{ 
                                 height: 40,
                                 fontWeight: 800,
@@ -159,3 +190,4 @@ export const AdvancedSearchPanel: React.FC<AdvancedSearchPanelProps> = ({
         </Box>
     );
 };
+

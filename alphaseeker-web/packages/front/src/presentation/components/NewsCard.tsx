@@ -6,11 +6,13 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import TagIcon from '@mui/icons-material/Tag';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import newsPlaceholder from '../../assets/news_placeholder.png';
 import { translationService } from '../../infrastructure/services/TranslationService';
+import { useNewsStore } from '../store/useNewsStore';
 
 interface NewsCardProps {
     item: NewsItem;
@@ -22,6 +24,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
+    const { addHashtag } = useNewsStore();
     
     const [displayItem, setDisplayItem] = useState<NewsItem>(item);
     const [translating, setTranslating] = useState(false);
@@ -79,7 +82,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
         if (dateValue instanceof Date) {
             date = dateValue;
         } else if (typeof dateValue === 'object') {
-            // Manejar Timestamp de Firestore (seconds/nanoseconds o _seconds/_nanoseconds)
             const seconds = dateValue.seconds ?? dateValue._seconds;
             if (seconds !== undefined) {
                 date = new Date(seconds * 1000);
@@ -87,7 +89,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
                 date = new Date(dateValue);
             }
         } else if (typeof dateValue === 'string') {
-            // Normalización para strings ISO con microsegundos
             const normalizedDate = dateValue.includes('.') 
                 ? dateValue.split('.')[0] + '.' + dateValue.split('.')[1].substring(0, 3).replace('Z', '') + 'Z'
                 : dateValue;
@@ -115,6 +116,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
 
     const handleCardClick = () => {
         navigate(`/news/${item.id}`);
+        window.scrollTo(0, 0);
+    };
+
+    const handleHashtagClick = (e: React.MouseEvent, tag: string) => {
+        e.stopPropagation();
+        addHashtag(tag);
+        navigate('/');
         window.scrollTo(0, 0);
     };
 
@@ -228,6 +236,32 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
                         }}>
                            {displayItem.content_summary}
                         </Typography>
+
+                        {/* Hashtags Section */}
+                        {item.tags && item.tags.length > 0 && (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                                {item.tags.map((tag) => (
+                                    <Chip
+                                        key={tag}
+                                        label={tag}
+                                        size="small"
+                                        icon={<TagIcon sx={{ fontSize: '14px !important' }} />}
+                                        onClick={(e) => handleHashtagClick(e, tag)}
+                                        sx={{ 
+                                            fontSize: '0.7rem', 
+                                            fontWeight: 700,
+                                            bgcolor: 'rgba(255,255,255,0.05)',
+                                            color: 'primary.main',
+                                            border: '1px solid rgba(247, 147, 26, 0.2)',
+                                            '&:hover': {
+                                                bgcolor: 'rgba(247, 147, 26, 0.1)',
+                                                borderColor: 'primary.main'
+                                            }
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                        )}
                     </CardContent>
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', pt: 2, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -263,3 +297,4 @@ export const NewsCard: React.FC<NewsCardProps> = ({ item, delay }) => {
         </motion.div>
     );
 };
+

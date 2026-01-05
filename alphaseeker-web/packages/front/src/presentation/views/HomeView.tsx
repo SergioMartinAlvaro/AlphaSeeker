@@ -10,27 +10,18 @@ import { Header } from '../components/Header';
 import { NewsCard } from '../components/NewsCard';
 import { AdvancedSearchPanel } from '../components/AdvancedSearchPanel';
 import { newsService } from '../../infrastructure/services/NewsService';
-import { NewsItem, NewsFilters } from '@alphaseeker/shared';
+import { NewsItem } from '@alphaseeker/shared';
 import { useTranslation } from 'react-i18next';
+import { useNewsStore } from '../store/useNewsStore';
 import cryptoLoader from '../../assets/Cryptocurrency.gif';
-
-const INITIAL_FILTERS: NewsFilters = {
-    title: '',
-    category: 'ALL',
-    asset_class: 'ALL',
-    sentiment: 'ALL',
-    risk_level: 'ALL',
-    action: 'ALL'
-};
 
 export function HomeView() {
     const { t } = useTranslation();
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
     
-    // Search & Filters State
-    const [filters, setFilters] = useState<NewsFilters>(INITIAL_FILTERS);
-    const [appliedFilters, setAppliedFilters] = useState<NewsFilters>(INITIAL_FILTERS);
+    // Global Search & Filters State
+    const { appliedFilters } = useNewsStore();
     
     // Pagination
     const [page, setPage] = useState(1);
@@ -54,16 +45,10 @@ export function HomeView() {
         loadNews();
     }, [loadNews]);
 
-    const handleApplyFilters = () => {
-        setPage(1); // Reset to first page when filtering
-        setAppliedFilters(filters);
-    };
-
-    const handleResetFilters = () => {
-        setFilters(INITIAL_FILTERS);
-        setAppliedFilters(INITIAL_FILTERS);
+    // Reset page when filters change
+    useEffect(() => {
         setPage(1);
-    };
+    }, [appliedFilters]);
 
     return (
         <Box sx={{ 
@@ -86,12 +71,7 @@ export function HomeView() {
                             </Typography>
                         </Box>
 
-                        <AdvancedSearchPanel 
-                            filters={filters}
-                            onFiltersChange={setFilters}
-                            onApply={handleApplyFilters}
-                            onReset={handleResetFilters}
-                        />
+                        <AdvancedSearchPanel />
 
                         {loading ? (
                             <Box sx={{ 
@@ -151,3 +131,4 @@ export function HomeView() {
         </Box>
     );
 }
+
