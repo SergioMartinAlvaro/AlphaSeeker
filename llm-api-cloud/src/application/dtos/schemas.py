@@ -22,6 +22,7 @@ class NewsItem(BaseModel):
 class BatchRequest(BaseModel):
     noticias: List[NewsItem]
     callback_url: str
+    webhook_token: Optional[str] = None
 
 class ImageBatchRequest(BaseModel):
     items: List[Dict[str, Any]]

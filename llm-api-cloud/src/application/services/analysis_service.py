@@ -54,7 +54,7 @@ class AnalysisService:
     """
 
     @classmethod
-    def process_batch(cls, job_id: str, noticias: List[NewsItem], callback_url: str):
+    def process_batch(cls, job_id: str, noticias: List[NewsItem], callback_url: str, webhook_token: str = None):
         logger.info(f"[AnalysisJob {job_id}] Processing {len(noticias)} items. Provider: {settings.LLM_PROVIDER}")
         JobService.update_job(job_id, {"status": "processing"})
         
@@ -135,11 +135,12 @@ class AnalysisService:
         
         # Callback
         try:
+            headers = {"X-API-KEY": webhook_token} if webhook_token else {}
             requests.post(callback_url, json={
                 "job_id": job_id, 
                 "status": "completed", 
                 "results": valid_results
-            }, timeout=10)
+            }, headers=headers, timeout=10)
             logger.info(f"Callback sent for {job_id}")
         except Exception as e:
             logger.error(f"Callback failed for {job_id}: {e}")

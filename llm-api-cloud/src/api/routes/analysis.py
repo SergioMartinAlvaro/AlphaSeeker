@@ -15,7 +15,8 @@ async def analyze_batch(request: BatchRequest, background_tasks: BackgroundTasks
         AnalysisService.process_batch, 
         job_id, 
         request.noticias, 
-        request.callback_url
+        request.callback_url,
+        request.webhook_token
     )
     
     return {
