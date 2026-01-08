@@ -10,7 +10,8 @@ from src.infrastructure.logging.logger import setup_logger
 logger = setup_logger(__name__)
 
 class ImageService:
-    PLACEHOLDER_URL = "https://alphaseeker-frontend-684822784514.us-central1.run.app/assets/news_placeholder-gnqQM7N-.png"
+    # Valid public placeholder that never 404s
+    PLACEHOLDER_URL = "https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker+Market+Update"
 
     @staticmethod
     def upload_to_gcs(image_content: bytes, destination_blob_name: str) -> str:
@@ -112,6 +113,38 @@ class ImageService:
         # 2. Intentar Pollinations (Respaldo)
         logger.info("🔄 Saltando a Pollinations AI como respaldo...")
         return ImageService.generate_with_pollinations(prompt)
+
+    @classmethod
+    def generate_and_upload(cls, prompt: str, job_id: str = None) -> str:
+        """
+        Generates an image (trying Gradio/Pollinations) and uploads it to GCS.
+        Returns the public URL or empty string if failed.
+        """
+        if not settings.ENABLE_IMAGE_GEN:
+            logger.info("🚫 Image Gen DISABLED by config.")
+            return cls.PLACEHOLDER_URL
+        
+        job_id = job_id or str(uuid.uuid4())
+        logger.info(f"🎨 Generating image for prompt: '{prompt[:50]}...'")
+        
+        # 1. Generate
+        img_bytes = cls.generate_without_upload(prompt)
+        
+        # 2. Upload
+        if img_bytes:
+            filename = f"news-images/{job_id}_{uuid.uuid4()}.jpg"
+            logger.info(f"⬆️ Uploading to GCS: {filename}")
+            image_url = cls.upload_to_gcs(img_bytes, filename)
+            
+            if image_url:
+                logger.info(f"✅ Image Ready: {image_url}")
+                return image_url
+            else:
+                 logger.error("❌ GCS Upload failed")
+        else:
+             logger.error("❌ Image Generation failed")
+             
+        return cls.PLACEHOLDER_URL
 
     @classmethod
     def process_batch(cls, job_id: str, items: List[Dict[str, Any]], callback_url: str):

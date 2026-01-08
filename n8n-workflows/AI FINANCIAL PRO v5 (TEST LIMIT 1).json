@@ -6,11 +6,11 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2400,
-        400
+        9072,
+        9040
       ],
-      "id": "19d60b90-86c5-43c0-af9e-4126ac48b010",
-      "name": "When clicking \u2018Execute workflow\u2019"
+      "id": "fb5466d1-f3b4-4567-b812-36a34b4d7626",
+      "name": "When clicking ‘Execute workflow’"
     },
     {
       "parameters": {
@@ -20,10 +20,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        -2208,
-        304
+        9264,
+        8944
       ],
-      "id": "97c49599-9a0b-4898-a572-a40e8ff6e708",
+      "id": "c38fc58c-f4f2-43eb-8c92-d816232d85fd",
       "name": "RSS Read",
       "retryOnFail": true,
       "disabled": true,
@@ -39,10 +39,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        -2000,
-        304
+        9472,
+        8944
       ],
-      "id": "069ebad0-6e6d-4ce8-beda-e61e5a0207f8",
+      "id": "a2bdbc4f-0778-43c0-91a9-f3a1f9d2a8ed",
       "name": "RSS Read1"
     },
     {
@@ -53,10 +53,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        -1808,
-        304
+        9664,
+        8944
       ],
-      "id": "781c2e2e-29ca-46c6-adbf-bcc0acb664ae",
+      "id": "deb96fe2-70e6-4bce-bf5e-c05e4722a7aa",
       "name": "RSS Read2",
       "disabled": true,
       "onError": "continueRegularOutput"
@@ -68,10 +68,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -1600,
-        304
+        9872,
+        8944
       ],
-      "id": "6f982a0d-69bd-49a1-9c00-d0484ad7a7eb",
+      "id": "b487dfb3-cff3-4aa9-87a7-3658c50006c4",
       "name": "Merge RSS"
     },
     {
@@ -95,10 +95,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        -1408,
-        304
+        10064,
+        8944
       ],
-      "id": "7f8a641e-8def-48e8-b64e-ffe4b9ae2e82",
+      "id": "26d33324-8cb3-4597-810d-dc269b8fd2e7",
       "name": "Obtener contenido de noticias",
       "onError": "continueRegularOutput"
     },
@@ -115,10 +115,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -1200,
-        304
+        10272,
+        8944
       ],
-      "id": "3f07008a-040a-47db-8416-8da921780e21",
+      "id": "cbe3552f-650e-4972-9656-d57ea8e8f98b",
       "name": "Check Scraper Errors"
     },
     {
@@ -132,10 +132,10 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        -1008,
-        304
+        10464,
+        8944
       ],
-      "id": "4a3c6909-3d6a-4a01-91fe-ca1be631d0f3",
+      "id": "8ef72430-023a-4d17-b7df-b9de88c912b8",
       "credentials": {
         "googleApi": {
           "id": "23XP927b2wW7Z3Rc",
@@ -155,10 +155,10 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        -800,
-        304
+        10672,
+        8944
       ],
-      "id": "4f8866f9-e222-406c-95ef-8ac64dbcad05",
+      "id": "da5db9ff-3b01-4f98-871a-1e1b8b46cfee",
       "credentials": {
         "googleApi": {
           "id": "23XP927b2wW7Z3Rc",
@@ -169,15 +169,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const newItems = $('Check Scraper Errors').all(); // Clean items\n// Safely get reference data directly from node execution\n// Note: Reference nodes ran sequentially, so data MUST be there\nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  const url = item.json.link || item.json.url;\n  \n  // Deduplicate\n  if (existingUrls.has(url)) continue;\n\n  // Cache Check\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      \n      // CLEAN NOISE: Truncate trash\n      let clean_text = raw_text;\n      const markers = [\"Most Popular Articles\", \"Latest comments\", \"Trade With A Regulated Broker\", \"View all comments\", \"More News\", \"Market Movers\"];\n      for (const m of markers) {\n          const idx = clean_text.indexOf(m);\n          if (idx > 200) clean_text = clean_text.substring(0, idx);\n      }\n\n      // FIX: Escape backticks for template string safety\n      clean_text = clean_text.replace(/`/g, \"\\\\`\");\n\n      // AGENT PROMPT: FINANCIAL ANALYST (READ-INTERPRET-GENERATE)\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm.\\n\\n### Task:\\nAnalyze the provided news content and output a STRICT JSON object.\\n\\n### EXECUTION STEPS (INTERNAL PROCESS):\\n1. **READ**: Read the entire news content carefully.\\n2. **INTERPRET**: mentally evaluate the financial implications, identifying key catalysts, risks, and market sentiment.\\n3. **GENERATE**: Populate the JSON fields based STRICTLY on your interpretation. Do not hallucinate data not present or implied by the text.\\n\\n### FIELD DEFINITIONS (CRITICAL):\\n1. **market_impact**: Explain specifically HOW this affects the asset price or sector. Don't just say \\\"it affects\\\". Mention volatility, trend reversal, or volume spikes. (Max 2 sentences, Spanish).\\n2. **sentiment**: The direct market mood implied by the text. BULLISH (Optimistic/Uptrend), BEARISH (Pessimistic/Downtrend), NEUTRAL (Ambiguous/Sideways).\\n3. **action**: Your professional recommendation. BUY (Positive catalyst), SELL (Negative catalyst), HOLD (Uncertainty/Wait), DISCARD (Irrelevant/Spam).\\n4. **investment_advice**: Concrete reasoning connecting the news to the Action. Why buy/sell? (Spanish).\\n5. **category**: High-level domain (MERCADOS, MACRO, CRIPTO, CORPORATIVO, DIVISAS, REGULACI\u00d3N, OTROS).\\n6. **asset_class**: Specific asset type (ACCIONES, CRIPTOMONEDAS, FOREX, MATERIAS PRIMAS, \u00cdNDICES, RENTA FIJA, MULTIASTET).\\n7. **tags**: List of 2-5 relevant keywords (tickers, entities, or concepts).\\n\\n### CRITICAL INSTRUCTIONS:\\n1. **RELEVANCE CHECK**: If the content is strictly legal/procedural (like Form 8-K), spam, or has NO financial market relevance, set \\\"action\\\" to \\\"DISCARD\\\" and \\\"market_impact\\\" to \\\"IRRELEVANT\\\".\\n2. **NO MARKDOWN**: Output raw JSON only.\\n3. **LANGUAGE**: Output values in SPANISH where requested.\\n\\n### Content:\\n${clean_text}\\n\\n### Output Schema:\\n{\\n  \\\"title\\\": \\\"Spanish Title (Max 15 words)\\\",\\n  \\\"summary\\\": \\\"Concise summary in Spanish\\\",\\n  \\\"market_impact\\\": \\\"(MANDATORY) Analysis in Spanish based on definition above.\\\",\\n  \\\"sentiment\\\": \\\"BULLISH | BEARISH | NEUTRAL\\\",\\n  \\\"risk_level\\\": \\\"LOW | MEDIUM | HIGH\\\",\\n  \\\"action\\\": \\\"BUY | SELL | HOLD | DISCARD\\\",\\n  \\\"category\\\": \\\"...\\\",\\n  \\\"asset_class\\\": \\\"...\\\",\\n  \\\"tags\\\": [\\\"...\\\", \\\"...\\\"],\\n  \\\"investment_advice\\\": {\\n    \\\"rating\\\": \\\"Buy/Hold/Sell\\\",\\n    \\\"reasoning\\\": \\\"Explanation in Spanish\\\"\\n  },\\n  \\\"image_prompt\\\": \\\"Futuristic financial illustration...\\\"\\n}`;\n      \n      // ATTACH METADATA FOR PRESERVATION\n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text,\n          published_date: item.json.isoDate || item.json.pubDate || new Date().toISOString()\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
+        "jsCode": "const newItems = $('Check Scraper Errors').all(); // Clean items\n// Safely get reference data directly from node execution\n// Note: Reference nodes ran sequentially, so data MUST be there\nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  // MODIFICADO: Usamos 'let' para poder reasignar si no encontramos la URL al principio\n  let url = item.json.link || item.json.url;\n  \n  // MODIFICADO: Comprobación adicional solicitada\n  if (!url && item.json.body) {\n      // Busca la propiedad 'url' dentro de body, o dentro de body.result\n      url = item.json.body.url || (item.json.body.result && item.json.body.result.url);\n  }\n  \n  // Deduplicate\n  if (existingUrls.has(url)) continue;\n\n  // Cache Check\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      \n      // CLEAN NOISE: Truncate trash\n      let clean_text = raw_text;\n      const markers = [\"Most Popular Articles\", \"Latest comments\", \"Trade With A Regulated Broker\", \"View all comments\", \"More News\", \"Market Movers\"];\n      for (const m of markers) {\n          const idx = clean_text.indexOf(m);\n          if (idx > 200) clean_text = clean_text.substring(0, idx);\n      }\n\n      // AGENT PROMPT: FINANCIAL ANALYST (READ-INTERPRET-GENERATE)\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm.\\n\\n### Task:\\nAnalyze the provided news content and output a STRICT JSON object.\\n\\n### EXECUTION STEPS (INTERNAL PROCESS):\\n1. **READ**: Read the entire news content carefully.\\n2. **INTERPRET**: mentally evaluate the financial implications, identifying key catalysts, risks, and market sentiment.\\n3. **GENERATE**: Populate the JSON fields based STRICTLY on your interpretation. Do not hallucinate data not present or implied by the text.\\n\\n### FIELD DEFINITIONS (CRITICAL):\\n1. **market_impact**: Explain specifically HOW this affects the asset price or sector. Don't just say \"it affects\". Mention volatility, trend reversal, or volume spikes. (Max 2 sentences, Spanish).\\n2. **sentiment**: The direct market mood implied by the text. BULLISH (Optimistic/Uptrend), BEARISH (Pessimistic/Downtrend), NEUTRAL (Ambiguous/Sideways).\\n3. **action**: Your professional recommendation. BUY (Positive catalyst), SELL (Negative catalyst), HOLD (Uncertainty/Wait), DISCARD (Irrelevant/Spam).\\n4. **investment_advice**: Concrete reasoning connecting the news to the Action. Why buy/sell? (Spanish).\\n\\n### CRITICAL INSTRUCTIONS:\\n1. **RELEVANCE CHECK**: If the content is strictly legal/procedural (like Form 8-K), spam, or has NO financial market relevance, set \"action\" to \"DISCARD\" and \"market_impact\" to \"IRRELEVANT\".\\n2. **NO MARKDOWN**: Output raw JSON only.\\n3. **LANGUAGE**: Output values in SPANISH where requested.\\n\\n### Content:\\n${clean_text}\\n\\n### Output Schema:\\n{\\n  \"title\": \"Spanish Title (Max 15 words)\",\\n  \"summary\": \"Concise summary in Spanish\",\\n  \"market_impact\": \"(MANDATORY) Analysis in Spanish based on definition above.\",\\n  \"sentiment\": \"BULLISH | BEARISH | NEUTRAL\",\\n  \"risk_level\": \"LOW | MEDIUM | HIGH\",\\n  \"action\": \"BUY | SELL | HOLD | DISCARD\",\\n  \"investment_advice\": {\\n    \"rating\": \"Buy/Hold/Sell\",\\n    \"reasoning\": \"Explanation in Spanish\"\\n  },\\n  \"image_prompt\": \"Futuristic financial illustration...\"\\n}`;\n      \n      // ATTACH METADATA FOR PRESERVATION\n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text,\n          published_date: item.json.isoDate || item.json.pubDate || new Date().toISOString()\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -608,
-        304
+        10864,
+        8944
       ],
-      "id": "27e3b97c-f6a0-43eb-80c5-f26329397381",
+      "id": "f129af78-8ae8-4d4a-9645-d0b85759acb4",
       "name": "Deduplicator & Filter"
     },
     {
@@ -194,10 +194,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -400,
-        304
+        11072,
+        8944
       ],
-      "id": "f2e64a84-2301-41d5-aa7e-5bc5c5920d6c",
+      "id": "aca8ccfa-3429-4516-9d32-a772a20b7945",
       "name": "Is Cached?"
     },
     {
@@ -207,10 +207,10 @@
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        -208,
-        400
+        11264,
+        9040
       ],
-      "id": "2f28c8a4-1ad8-41f9-b57b-0b1aec72adfd",
+      "id": "84850756-3814-448d-8810-c0ea8dfc35d7",
       "name": "Limit to 1"
     },
     {
@@ -221,10 +221,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        0,
-        400
+        11472,
+        9040
       ],
-      "id": "4fa10ded-90ea-497c-8394-479a10f35f75",
+      "id": "b7e5f441-487e-4e03-9ec8-2e94c39ec12d",
       "name": "Recorrer noticias en lotes"
     },
     {
@@ -234,16 +234,16 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        144,
-        512
+        11616,
+        9152
       ],
-      "id": "e52c60b5-368e-485b-bda5-cbc7f3b8f415",
+      "id": "b8a84ad4-900f-459c-b267-1b6873d9432d",
       "name": "Preparar Payload UNICO"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analyze-batch",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analysis/analyze-batch",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.payload }}",
@@ -252,10 +252,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        304,
-        512
+        11776,
+        9152
       ],
-      "id": "02985694-e608-4ee0-8dab-5c3e2899cb2e",
+      "id": "01a3917c-1a31-4058-91c4-f52de5f570d7",
       "name": "Llamar a la IA en lote",
       "retryOnFail": false,
       "onError": "continueRegularOutput"
@@ -270,10 +270,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        11472,
+        8640
       ],
-      "id": "ac966252-785c-4338-a849-ead2168a7cd0",
+      "id": "df8ad409-2750-443f-91d2-bfe195823bf9",
       "webhookId": "b9ddebfc-a156-4d1d-89b3-fdc91bb66b26"
     },
     {
@@ -285,10 +285,10 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        208,
-        0
+        11680,
+        8640
       ],
-      "id": "0d463e0c-473d-49c1-8036-fce8819c6260",
+      "id": "a370451d-6010-4ece-a482-2fa2c108ff3c",
       "name": "Split Out"
     },
     {
@@ -304,10 +304,10 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        400,
-        0
+        11872,
+        8640
       ],
-      "id": "fc5738a7-2b95-48e7-8556-4f9dd1e62b26",
+      "id": "5d3b7844-bd99-4da7-8a8b-74b32811a494",
       "credentials": {
         "googleApi": {
           "id": "23XP927b2wW7Z3Rc",
@@ -323,10 +323,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        304,
-        0
+        11776,
+        8640
       ],
-      "id": "d8d57b2a-98d8-466e-ab9c-b881b548bed2",
+      "id": "6fde2381-c33c-4df0-8bf2-985c72022cfe",
       "name": "Prep for Cache"
     },
     {
@@ -336,10 +336,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        608,
-        208
+        12080,
+        8848
       ],
-      "id": "dbf70e73-34d6-41d9-8444-1b516a8bd387",
+      "id": "f564119e-c050-4c5b-b5a8-82849741f685",
       "name": "Definir Estilo y URL"
     },
     {
@@ -353,10 +353,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        800,
-        208
+        12272,
+        8848
       ],
-      "id": "1f31fb26-0cc9-405f-ab2e-0d48620d094d",
+      "id": "7fb0c12a-1de5-4e94-a423-c970512c1d35",
       "disabled": true,
       "onError": "continueRegularOutput"
     },
@@ -375,10 +375,10 @@
       "type": "n8n-nodes-base.googleCloudStorage",
       "typeVersion": 1,
       "position": [
-        1008,
-        208
+        12480,
+        8848
       ],
-      "id": "08d920eb-cee4-40dd-ad87-f0ab00728004",
+      "id": "fd9cf54f-2a7d-464b-b425-3454daf7c061",
       "credentials": {
         "googleCloudStorageOAuth2Api": {
           "id": "qLnNF6lXChjLcSKr",
@@ -390,15 +390,15 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst validItems = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n   let data = item.json;\n\n   if (data['body.results']) {\n       if (data['body.results'].result_json && typeof data['body.results'].result_json === 'string') {\n           try {\n               const parsed = JSON.parse(data['body.results'].result_json);\n               data = { ...data, ...(parsed['body.results'] || parsed) };\n           } catch(e) { console.log('Error parsing nested result_json', e); }\n       } else {\n           data = { ...data, ...data['body.results'] };\n       }\n   }\n   \n   if (data.result_json && typeof data.result_json === 'string') {\n       try {\n           const parsed = JSON.parse(data.result_json);\n           data = { ...data, ...(parsed['body.results'] || parsed) };\n       } catch(e) { console.log('Error parsing root result_json', e); }\n   }\n\n   const bucket = 'alphaseeker-assets';\n   let imageUrl = data.image_url || item.json.generated_image_url || data.generated_image_url || '';\n   \n   if (item.json.name) {\n       imageUrl = `https://storage.googleapis.com/${bucket}/${item.json.name}`;\n   } else if (item.json.temp_id && !imageUrl.includes('storage.googleapis.com')) {\n       imageUrl = `https://storage.googleapis.com/${bucket}/news-images/${item.json.temp_id}.jpg`;\n   }\n\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       continue;\n   }\n\n   const generatedId = data.url ? data.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100) : 'news_' + Math.floor(Math.random() * 1000);\n\n   if (seenIds.has(generatedId)) {\n       console.log('Deduplicaci\u00f3n n8n: Saltando noticia duplicada con ID:', generatedId);\n       continue;\n   }\n   seenIds.add(generatedId);\n\n   const normalized = {\n       id: generatedId,\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || data.market_impact || '', \n       action: data.action || 'HOLD',\n       category: data.category || 'MERCADOS',\n       asset_class: data.asset_class || 'ACCIONES',\n       tags: Array.isArray(data.tags) ? data.tags : [],\n       image_url: imageUrl\n   };\n\n   if (!normalized.market_impact) {\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
+        "jsCode": "\nconst validItems = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n   let data = item.json;\n\n   if (data['body.results']) {\n       if (data['body.results'].result_json && typeof data['body.results'].result_json === 'string') {\n           try {\n               const parsed = JSON.parse(data['body.results'].result_json);\n               data = { ...data, ...(parsed['body.results'] || parsed) };\n           } catch(e) { console.log('Error parsing nested result_json', e); }\n       } else {\n           data = { ...data, ...data['body.results'] };\n       }\n   }\n   \n   if (data.result_json && typeof data.result_json === 'string') {\n       try {\n           const parsed = JSON.parse(data.result_json);\n           data = { ...data, ...(parsed['body.results'] || parsed) };\n       } catch(e) { console.log('Error parsing root result_json', e); }\n   }\n\n   const bucket = 'alphaseeker-assets';\n   let imageUrl = data.image_url || item.json.generated_image_url || data.generated_image_url || '';\n   \n   if (item.json.name) {\n       imageUrl = `https://storage.googleapis.com/${bucket}/${item.json.name}`;\n   } else if (item.json.temp_id && !imageUrl.includes('storage.googleapis.com')) {\n       imageUrl = `https://storage.googleapis.com/${bucket}/news-images/${item.json.temp_id}.jpg`;\n   }\n\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       continue;\n   }\n\n   const generatedId = data.url ? data.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100) : 'news_' + Math.floor(Math.random() * 1000);\n\n   if (seenIds.has(generatedId)) {\n       console.log('Deduplicación n8n: Saltando noticia duplicada con ID:', generatedId);\n       continue;\n   }\n   seenIds.add(generatedId);\n\n   const normalized = {\n       id: generatedId,\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || data.market_impact || '', \n       action: data.action || 'HOLD',\n       category: data.category || 'MERCADOS',\n       asset_class: data.asset_class || 'ACCIONES',\n       tags: Array.isArray(data.tags) ? data.tags : [],\n       social_content: data.social_content || data.content_summary || '',\n       image_url: imageUrl\n   };\n\n   if (!normalized.market_impact) {\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1200,
-        208
+        12672,
+        8848
       ],
-      "id": "c647fff2-e8e2-48de-a2ca-5fba9412f37f",
+      "id": "ac82be7f-ab32-4db5-b58c-a67f36116b74",
       "name": "Preparar Objeto Final"
     },
     {
@@ -414,10 +414,10 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        1408,
-        208
+        12880,
+        8848
       ],
-      "id": "4746bc05-a86d-451a-b081-542cedbff848",
+      "id": "a6ffd20e-c86e-4693-93ec-509257b4c844",
       "credentials": {
         "googleApi": {
           "id": "23XP927b2wW7Z3Rc",
@@ -437,10 +437,10 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        1600,
-        208
+        13072,
+        8848
       ],
-      "id": "e98f9b44-f1bd-4117-84ae-556d4ab8b0a1",
+      "id": "b530467b-72b0-46af-a21a-ade4b564303a",
       "credentials": {
         "googleApi": {
           "id": "23XP927b2wW7Z3Rc",
@@ -451,24 +451,183 @@
     {
       "parameters": {
         "chatId": "@alphaseeker_finances",
-        "text": "=<b>{{ $json.sentiment === 'BULLISH' ? '\ud83d\ude80' : ($json.sentiment === 'BEARISH' ? '\ud83d\udcc9' : '\u2696\ufe0f') }} {{ $json.title.toUpperCase() }}</b>\n\n{{ $json.content_summary }}\n\n\ud83d\ude80 <b>An\u00e1lisis de IA:</b> {{ $json.action }} ({{ $json.risk_level }} RISK)\n\n\ud83d\udc47 <i>Lee el an\u00e1lisis detallado y los niveles clave aqu\u00ed:</i>\nhttps://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}",
+        "text": "=<b>{{ $json.sentiment === 'BULLISH' ? '🚀' : ($json.sentiment === 'BEARISH' ? '📉' : '⚖️') }} {{ $json.title.toUpperCase() }}</b>\n\n{{ $json.content_summary }}\n\n🚀 <b>Análisis de IA:</b> {{ $json.action }} ({{ $json.risk_level }} RISK)\n\n👇 <i>Lee el análisis detallado y los niveles clave aquí:</i>\nhttps://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}",
         "additionalFields": {
           "parse_mode": "HTML"
         }
       },
-      "id": "telegram-notification-node",
+      "id": "2acb1a3e-3f22-4063-93b7-a4745af5b030",
       "name": "Telegram Notification",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        1600,
-        400
+        13072,
+        9040
+      ],
+      "webhookId": "15f33645-acbd-475b-8f78-b50e9c5f4ad6",
+      "credentials": {
+        "telegramApi": {
+          "id": "xEFEyNMz9KEaygLD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/social/post",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.social_content }}\n\n🔗 https://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.image_url }}"
+            },
+            {
+              "name": "platform",
+              "value": "facebook"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        13680,
+        8992
+      ],
+      "id": "f92652e6-5f2e-4764-9087-ac6ff349a77a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst validItems = items.map(i => i.json).filter(i => i.title && (i.summary || i.content_summary));\n\nif (validItems.length === 0) {\n  return [];\n}\n\nreturn [\n  {\n    json: {\n      items: validItems\n    }\n  }\n];"
+      },
+      "id": "59419d96-8a40-4ba6-bff2-e695bafe3be4",
+      "name": "Aggregate News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13984,
+        8944
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/analysis/summary",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ $json.items }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bd5a59fb-5608-471d-b47d-41277e0742ab",
+      "name": "Generate Market Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        14176,
+        8944
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app/integration/facebook/token",
+        "options": {}
+      },
+      "id": "90d7d9f5-7a0a-4463-b825-a961a6daea4b",
+      "name": "Get Facebook Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        14480,
+        8752
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v19.0/61585831636993/photos",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $('Generate Market Summary').first().json.image_url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Generate Market Summary').first().json.social_content }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8dd2adcd-b5a7-4bd5-b345-6f19961939d5",
+      "name": "Post to Facebook Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        14672,
+        8752
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "@alphaseeker_news",
+        "text": "={{ $json.social_content }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "c5c6f5d8-87d0-43eb-ae11-43d3f466d76c",
+      "name": "Post to Telegram Channel",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        14576,
+        9040
+      ],
+      "webhookId": "33e05504-53a3-422c-a793-4493ec17f6f8",
+      "credentials": {
+        "telegramApi": {
+          "id": "xEFEyNMz9KEaygLD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        9968,
+        9184
+      ],
+      "id": "47b7110f-9bd8-4277-bfb5-be50ae3626d3",
+      "name": "Limit to "
     }
   ],
   "pinData": {},
   "connections": {
-    "When clicking \u2018Execute workflow\u2019": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {
@@ -516,7 +675,7 @@
       "main": [
         [
           {
-            "node": "Obtener contenido de noticias",
+            "node": "Limit to ",
             "type": "main",
             "index": 0
           }
@@ -741,6 +900,60 @@
             "node": "Telegram Notification",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Aggregate News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate News": {
+      "main": [
+        [
+          {
+            "node": "Generate Market Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Market Summary": {
+      "main": [
+        [
+          {
+            "node": "Get Facebook Token",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Telegram Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Facebook Token": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to ": {
+      "main": [
+        [
+          {
+            "node": "Obtener contenido de noticias",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -751,11 +964,11 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "df100da2-6a5c-4d70-9562-55a7b4699062",
+  "versionId": "fa29e855-315d-4f3a-ac0e-912ae56d37e9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "08a112c702a6b8d9c227e5db241bef1608a6170b374f551094e874b45a57fcfd"
   },
-  "id": "9y3r9IqabfVGBjvc",
+  "id": "L8JjAwSf6tog1Deb",
   "tags": []
 }

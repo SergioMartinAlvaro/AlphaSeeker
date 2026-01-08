@@ -18,4 +18,10 @@ class Settings:
     GRADIO_SPACE: str = os.environ.get("GRADIO_SPACE", "black-forest-labs/FLUX.1-schnell")
     HF_TOKEN: str = os.environ.get("HF_TOKEN", "")
 
+    # Facebook Config
+    FB_PAGE_ACCESS_TOKEN: str = os.environ.get("FB_PAGE_ACCESS_TOKEN", "")
+    FB_PAGE_ID: str = os.environ.get("FB_PAGE_ID", "")
+    FB_APP_SECRET: str = os.environ.get("FB_APP_SECRET", "")
+    FB_APP_ID: str = os.environ.get("FB_APP_ID", "")
+
 settings = Settings()

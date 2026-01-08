@@ -56,13 +56,24 @@ if [ -z "$GEMINI_API_KEY" ]; then
 fi
 
 # 2. Deploy LLM API Cloud (Cloud Run)
+# 1.1 Ask for HF_TOKEN if not present
+if [ -z "$HF_TOKEN" ]; then
+    if [ -f "./llm-api-cloud/.env" ]; then
+         export $(grep -v '^#' ./llm-api-cloud/.env | grep 'HF_TOKEN' | xargs)
+    fi
+    # Also load FB keys
+    if [ -f "./llm-api-cloud/.env" ]; then
+         export $(grep -v '^#' ./llm-api-cloud/.env | grep 'FB_' | xargs)
+    fi
+fi
+
 echo "--- Deploying Cloud LLM API (Gemini-backed) ---"
 $GCLOUD_CMD run deploy $SERVICE_NAME_API \
     --source ./llm-api-cloud \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
-    --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY" \
+    --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY",HF_TOKEN="$HF_TOKEN",FB_PAGE_ACCESS_TOKEN="$FB_PAGE_ACCESS_TOKEN",FB_PAGE_ID="$FB_PAGE_ID",FB_APP_ID="$FB_APP_ID",FB_APP_SECRET="$FB_APP_SECRET" \
     --memory 512Mi \
     --cpu 1 \
     --port 8080

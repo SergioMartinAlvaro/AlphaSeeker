@@ -143,3 +143,58 @@ class AnalysisService:
             logger.info(f"Callback sent for {job_id}")
         except Exception as e:
             logger.error(f"Callback failed for {job_id}: {e}")
+
+    async def generate_market_summary(self, news_items: list) -> dict:
+        """
+        Synthesizes multiple news items into a single engaging social media post.
+        """
+        if not news_items:
+            return {"social_content": "", "image_prompt": ""}
+
+        # Prepare context
+        context_str = ""
+        for i, item in enumerate(news_items):
+            context_str += f"{i+1}. {item.get('title', 'No Title')} ({item.get('sentiment', 'NEUTRAL')})\n   Summary: {item.get('summary', '')}\n   Advice: {item.get('investment_advice', {}).get('reasoning', '')}\n\n"
+
+        prompt = f"""
+        ### Role:
+        You are a Senior Financial Analyst and Social Media Influencer for 'AlphaSeeker'.
+
+        ### Task:
+        Read the following recent market news and generate a SINGLE, POWERFUL social media post (Facebook/Instagram style) that summarizes the current market mood.
+
+        ### Input News:
+        {context_str}
+
+        ### Output Requirements (STRICT JSON):
+        1. **social_content**: A single text block.
+           - **Head**: 1 catchy line using CAPSLOCK/Emojis (e.g., "🚨 MERCADO EN ALERTA: ¿CRASH O OPORTUNIDAD?").
+           - **Body**: Synthesize the key themes. Don't list news 1 by 1. Instead, narrate the story: "Inflation fears are back while Tech stocks rally...". Group related items.
+           - **Action**: Give a general advice based on the collective sentiment (e.g., "Moment to accumulate defensive stocks").
+           - **Closing**: "👇 ¿Qué opinas? ¡Te leemos!"
+           - **Hashtags**: #AlphaSeeker #Finanzas #Inversión + 3 specific tags.
+           - **Language**: Spanish. Top-tier professional yet accessible tone.
+        
+        2. **image_prompt**: A prompt for an AI image generator.
+           - Abstract, cinematic concept representing the COLLECTIVE mood.
+           - E.g., "A bull fighting a bear on a digital cliff, neon lines, cinematic lighting".
+           - No text in image.
+
+        ### JSON Schema:
+        {{
+            "social_content": "...",
+            "image_prompt": "..."
+        }}
+        """
+        
+        from fastapi.concurrency import run_in_threadpool
+        result = await run_in_threadpool(GeminiService.call_gemini, prompt)
+        
+        # 3. Generate Image Internally
+        if isinstance(result, dict) and result.get("image_prompt"):
+             from src.application.services.image_service import ImageService
+             # Run image generation in threadpool to avoid blocking
+             image_url = await run_in_threadpool(ImageService.generate_and_upload, result["image_prompt"])
+             result["image_url"] = image_url
+        
+        return result

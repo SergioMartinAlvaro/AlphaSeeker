@@ -4,7 +4,7 @@ from src.application.dtos.schemas import ImageBatchRequest
 from src.application.services.job_service import JobService
 from src.application.services.image_service import ImageService
 
-router = APIRouter(tags=["Images"])
+router = APIRouter(prefix="/images", tags=["Images"])
 
 @router.post("/generate-images-batch", summary="Generate images batch")
 async def generate_images_batch(request: ImageBatchRequest, background_tasks: BackgroundTasks):
@@ -24,3 +24,18 @@ async def generate_images_batch(request: ImageBatchRequest, background_tasks: Ba
         "job_id": job_id, 
         "message": "Image generation started"
     }
+
+from pydantic import BaseModel
+
+class ImageRequest(BaseModel):
+    prompt: str
+
+@router.post("/generate", summary="Generate Single Image")
+async def generate_single_image(request: ImageRequest):
+    """
+    Generates a single image and returns the public GCS URL.
+    """
+    image_url = ImageService.generate_and_upload(request.prompt)
+    if not image_url or "placeholder" in image_url:
+         return {"status": "failed", "url": image_url}
+    return {"status": "success", "url": image_url}
