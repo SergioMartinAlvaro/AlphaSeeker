@@ -1,12 +1,12 @@
 {
-  "name": "AI FINANCIAL PRO v5 (SECURE)",
+  "name": "AI FINANCIAL PRO v5 (SECURE ROUTER)",
   "nodes": [
     {
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        8800,
+        8600,
         9040
       ],
       "id": "fb5466d1-f3b4-4567-b812-36a34b4d7626",
@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
+        "keepOnlySet": false,
         "values": {
           "string": [
             {
@@ -40,11 +40,31 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        9050,
-        9040
+        9060,
+        8820
       ],
       "id": "config-node-global",
       "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.headers ? true : false }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        9280,
+        8820
+      ],
+      "id": "flow-router",
+      "name": "Is Webhook?"
     },
     {
       "parameters": {
@@ -54,8 +74,8 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        9264,
-        8944
+        9500,
+        8940
       ],
       "id": "c38fc58c-f4f2-43eb-8c92-d816232d85fd",
       "name": "RSS Read",
@@ -73,8 +93,8 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        9472,
-        8944
+        9500,
+        9140
       ],
       "id": "a2bdbc4f-0778-43c0-91a9-f3a1f9d2a8ed",
       "name": "RSS Read1"
@@ -87,8 +107,8 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        9664,
-        8944
+        9500,
+        9340
       ],
       "id": "deb96fe2-70e6-4bce-bf5e-c05e4722a7aa",
       "name": "RSS Read2",
@@ -103,7 +123,7 @@
       "typeVersion": 3.2,
       "position": [
         9872,
-        8944
+        9140
       ],
       "id": "b487dfb3-cff3-4aa9-87a7-3658c50006c4",
       "name": "Merge RSS"
@@ -130,7 +150,7 @@
       "typeVersion": 4.3,
       "position": [
         10064,
-        8944
+        9140
       ],
       "id": "26d33324-8cb3-4597-810d-dc269b8fd2e7",
       "name": "Obtener contenido de noticias",
@@ -150,7 +170,7 @@
       "typeVersion": 1,
       "position": [
         10272,
-        8944
+        9140
       ],
       "id": "cbe3552f-650e-4972-9656-d57ea8e8f98b",
       "name": "Check Scraper Errors"
@@ -167,7 +187,7 @@
       "typeVersion": 1,
       "position": [
         10464,
-        8944
+        9140
       ],
       "id": "8ef72430-023a-4d17-b7df-b9de88c912b8",
       "credentials": {
@@ -190,7 +210,7 @@
       "typeVersion": 1,
       "position": [
         10672,
-        8944
+        9140
       ],
       "id": "da5db9ff-3b01-4f98-871a-1e1b8b46cfee",
       "credentials": {
@@ -203,13 +223,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const newItems = $('Check Scraper Errors').all(); // Clean items\n// Safely get reference data directly from node execution\n// Note: Reference nodes ran sequentially, so data MUST be there\nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  // MODIFICADO: Usamos 'let' para poder reasignar si no encontramos la URL al principio\n  let url = item.json.link || item.json.url;\n  \n  // MODIFICADO: Comprobación adicional solicitada\n  if (!url && item.json.body) {\n      // Busca la propiedad 'url' dentro de body, o dentro de body.result\n      url = item.json.body.url || (item.json.body.result && item.json.body.result.url);\n  }\n  \n  // Deduplicate\n  if (existingUrls.has(url)) continue;\n\n  // Cache Check\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      \n      // CLEAN NOISE: Truncate trash\n      let clean_text = raw_text;\n      const markers = [\"Most Popular Articles\", \"Latest comments\", \"Trade With A Regulated Broker\", \"View all comments\", \"More News\", \"Market Movers\"];\n      for (const m of markers) {\n          const idx = clean_text.indexOf(m);\n          if (idx > 200) clean_text = clean_text.substring(0, idx);\n      }\n\n      // AGENT PROMPT: FINANCIAL ANALYST (READ-INTERPRET-GENERATE)\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm.\\n\\n### Task:\\nAnalyze the provided news content and output a STRICT JSON object.\\n\\n### EXECUTION STEPS (INTERNAL PROCESS):\\n1. **READ**: Read the entire news content carefully.\\n2. **INTERPRET**: mentally evaluate the financial implications, identifying key catalysts, risks, and market sentiment.\\n3. **GENERATE**: Populate the JSON fields based STRICTLY on your interpretation. Do not hallucinate data not present or implied by the text.\\n\\n### FIELD DEFINITIONS (CRITICAL):\\n1. **market_impact**: Explain specifically HOW this affects the asset price or sector. Don't just say \"it affects\". Mention volatility, trend reversal, or volume spikes. (Max 2 sentences, Spanish).\\n2. **sentiment**: The direct market mood implied by the text. BULLISH (Optimistic/Uptrend), BEARISH (Pessimistic/Downtrend), NEUTRAL (Ambiguous/Sideways).\\n3. **action**: Your professional recommendation. BUY (Positive catalyst), SELL (Negative catalyst), HOLD (Uncertainty/Wait), DISCARD (Irrelevant/Spam).\\n4. **investment_advice**: Concrete reasoning connecting the news to the Action. Why buy/sell? (Spanish).\\n\\n### CRITICAL INSTRUCTIONS:\\n1. **RELEVANCE CHECK**: If the content is strictly legal/procedural (like Form 8-K), spam, or has NO financial market relevance, set \"action\" to \"DISCARD\" and \"market_impact\" to \"IRRELEVANT\".\\n2. **NO MARKDOWN**: Output raw JSON only.\\n3. **LANGUAGE**: Output values in SPANISH where requested.\\n\\n### Content:\\n${clean_text}\\n\\n### Output Schema:\\n{\\n  \"title\": \"Spanish Title (Max 15 words)\",\\n  \"summary\": \"Concise summary in Spanish\",\\n  \"market_impact\": \"(MANDATORY) Analysis in Spanish based on definition above.\",\\n  \"sentiment\": \"BULLISH | BEARISH | NEUTRAL\",\\n  \"risk_level\": \"LOW | MEDIUM | HIGH\",\\n  \"action\": \"BUY | SELL | HOLD | DISCARD\",\\n  \"investment_advice\": {\\n    \"rating\": \"Buy/Hold/Sell\",\\n    \"reasoning\": \"Explanation in Spanish\"\\n  },\\n  \"image_prompt\": \"Futuristic financial illustration...\"\\n}`;\n      \n      // ATTACH METADATA FOR PRESERVATION\n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text,\n          published_date: item.json.isoDate || item.json.pubDate || new Date().toISOString()\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
+        "jsCode": "const newItems = $('Check Scraper Errors').all(); \nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  let url = item.json.link || item.json.url;\n  \n  if (!url && item.json.body) {\n      url = item.json.body.url || (item.json.body.result && item.json.body.result.url);\n  }\n  \n  if (existingUrls.has(url)) continue;\n\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      let clean_text = raw_text;\n      const markers = [\"Most Popular Articles\", \"Latest comments\", \"Trade With A Regulated Broker\", \"View all comments\", \"More News\", \"Market Movers\"];\n      for (const m of markers) {\n          const idx = clean_text.indexOf(m);\n          if (idx > 200) clean_text = clean_text.substring(0, idx);\n      }\n\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm.\\n\\n### Task:\\nAnalyze the provided news content and output a STRICT JSON object.\\n\\n### EXECUTION STEPS (INTERNAL PROCESS):\\n1. **READ**: Read the entire news content carefully.\\n2. **INTERPRET**: mentally evaluate the financial implications, identifying key catalysts, risks, and market sentiment.\\n3. **GENERATE**: Populate the JSON fields based STRICTLY on your interpretation. Do not hallucinate data not present or implied by the text.\\n\\n### FIELD DEFINITIONS (CRITICAL):\\n1. **market_impact**: Explain specifically HOW this affects the asset price or sector. Don't just say \"it affects\". Mention volatility, trend reversal, or volume spikes. (Max 2 sentences, Spanish).\\n2. **sentiment**: The direct market mood implied by the text. BULLISH (Optimistic/Uptrend), BEARISH (Pessimistic/Downtrend), NEUTRAL (Ambiguous/Sideways).\\n3. **action**: Your professional recommendation. BUY (Positive catalyst), SELL (Negative catalyst), HOLD (Uncertainty/Wait), DISCARD (Irrelevant/Spam).\\n4. **investment_advice**: Concrete reasoning connecting the news to the Action. Why buy/sell? (Spanish).\\n\\n### CRITICAL INSTRUCTIONS:\\n1. **RELEVANCE CHECK**: If the content is strictly legal/procedural (like Form 8-K), spam, or has NO financial market relevance, set \"action\" to \"DISCARD\" and \"market_impact\" to \"IRRELEVANT\".\\n2. **NO MARKDOWN**: Output raw JSON only.\\n3. **LANGUAGE**: Output values in SPANISH where requested.\\n\\n### Content:\\n${clean_text}\\n\\n### Output Schema:\\n{\\n  \"title\": \"Spanish Title (Max 15 words)\",\\n  \"summary\": \"Concise summary in Spanish\",\\n  \"market_impact\": \"(MANDATORY) Analysis in Spanish based on definition above.\",\\n  \"sentiment\": \"BULLISH | BEARISH | NEUTRAL\",\\n  \"risk_level\": \"LOW | MEDIUM | HIGH\",\\n  \"action\": \"BUY | SELL | HOLD | DISCARD\",\\n  \"investment_advice\": {\\n    \"rating\": \"Buy/Hold/Sell\",\\n    \"reasoning\": \"Explanation in Spanish\"\\n  },\\n  \"image_prompt\": \"Futuristic financial illustration...\"\\n}`;\n      \n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text,\n          published_date: item.json.isoDate || item.json.pubDate || new Date().toISOString()\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         10864,
-        8944
+        9140
       ],
       "id": "f129af78-8ae8-4d4a-9645-d0b85759acb4",
       "name": "Deduplicator & Filter"
@@ -229,7 +249,7 @@
       "typeVersion": 1,
       "position": [
         11072,
-        8944
+        9140
       ],
       "id": "aca8ccfa-3429-4516-9d32-a772a20b7945",
       "name": "Is Cached?"
@@ -242,7 +262,7 @@
       "typeVersion": 1,
       "position": [
         11264,
-        9040
+        9240
       ],
       "id": "84850756-3814-448d-8810-c0ea8dfc35d7",
       "name": "Limit to 1"
@@ -256,20 +276,20 @@
       "typeVersion": 3,
       "position": [
         11472,
-        9040
+        9240
       ],
       "id": "b7e5f441-487e-4e03-9ec8-2e94c39ec12d",
       "name": "Recorrer noticias en lotes"
     },
     {
       "parameters": {
-        "jsCode": "// AGGREGATOR NODE: Combine all items in the batch into a SINGLE request payload\n// This prevents the HTTP Request node from executing multiple times in parallel\n\nconst noticias = items.map(item => ({\n    text: item.json.prompt_para_api,\n    metadata: item.json.metadata_para_api\n}));\n\n// Construct secure callback payload\nconst config = $('Config').first().json;\n\nreturn [{\n    json: {\n        payload: {\n            noticias: noticias,\n            callback_url: config.WEBHOOK_URL,\n            webhook_token: config.WEBHOOK_TOKEN\n        }\n    }\n}];"
+        "jsCode": "const noticias = items.map(item => ({\n    text: item.json.prompt_para_api,\n    metadata: item.json.metadata_para_api\n}));\n\nconst config = $('Config').first().json;\n\nreturn [{\n    json: {\n        payload: {\n            noticias: noticias,\n            callback_url: config.WEBHOOK_URL,\n            webhook_token: config.WEBHOOK_TOKEN\n        }\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         11616,
-        9152
+        9352
       ],
       "id": "b8a84ad4-900f-459c-b267-1b6873d9432d",
       "name": "Preparar Payload UNICO"
@@ -287,7 +307,7 @@
       "typeVersion": 4.3,
       "position": [
         11776,
-        9152
+        9352
       ],
       "id": "01a3917c-1a31-4058-91c4-f52de5f570d7",
       "name": "Llamar a la IA en lote",
@@ -307,8 +327,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        11400,
-        8640
+        8600,
+        8600
       ],
       "id": "df8ad409-2750-443f-91d2-bfe195823bf9",
       "webhookId": "b9ddebfc-a156-4d1d-89b3-fdc91bb66b26"
@@ -318,7 +338,7 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $headers['x-api-key'] }}",
+              "value1": "={{ $json.headers['x-api-key'] }}",
               "value2": "={{ $('Config').first().json.WEBHOOK_TOKEN }}"
             }
           ]
@@ -327,8 +347,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        11550,
-        8640
+        9500,
+        8600
       ],
       "id": "security-check-node",
       "name": "Security Check"
@@ -342,8 +362,8 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        11700,
-        8640
+        9700,
+        8600
       ],
       "id": "a370451d-6010-4ece-a482-2fa2c108ff3c",
       "name": "Split Out"
@@ -361,8 +381,8 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        11872,
-        8640
+        9900,
+        8600
       ],
       "id": "5d3b7844-bd99-4da7-8a8b-74b32811a494",
       "credentials": {
@@ -375,26 +395,26 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Prepare content for Cache Saving\nfor (const item of items) {\n  item.json.result_json = JSON.stringify(item.json);\n}\nreturn items;"
+        "jsCode": "\nfor (const item of items) {\n  item.json.result_json = JSON.stringify(item.json);\n}\nreturn items;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        11776,
-        8640.2
+        9800,
+        8600.2
       ],
       "id": "6fde2381-c33c-4df0-8bf2-985c72022cfe",
       "name": "Prep for Cache"
     },
     {
       "parameters": {
-        "jsCode": "\nfor (const item of items) {\n  let llmResult = {};\n  \n  // FIX: Handle 'result_json' string from Cache or Previous Node\n  if (item.json.result_json) {\n      try {\n          const parsed = typeof item.json.result_json === 'string' ? JSON.parse(item.json.result_json) : item.json.result_json;\n          // Unwrap nested 'body.results'\n          if (parsed['body.results']) {\n              llmResult = parsed['body.results'];\n          } else if (parsed.body && parsed.body.results) {\n              llmResult = parsed.body.results;\n          } else {\n              llmResult = parsed;\n          }\n      } catch (e) {\n          console.log('Error parsing result_json', e);\n      }\n  } else if (item.json.result) {\n      // Fallback for legacy format\n       llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  }\n\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  // Use existing image_url from microservice if available\n  let imageUrl = llmResult.image_url || item.json.image_url || item.json.generated_image_url || '';\n  let tempId = item.json.temp_id || 'news_' + Math.floor(Math.random()*100000);\n\n  if (!imageUrl || !imageUrl.includes('storage.googleapis.com')) {\n      // Fallback if no valid image\n      imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker+Market+Analysis';\n  }\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: tempId\n  };\n}\nreturn items;\n"
+        "jsCode": "\nfor (const item of items) {\n  let llmResult = {};\n  \n  if (item.json.result_json) {\n      try {\n          const parsed = typeof item.json.result_json === 'string' ? JSON.parse(item.json.result_json) : item.json.result_json;\n          if (parsed['body.results']) {\n              llmResult = parsed['body.results'];\n          } else if (parsed.body && parsed.body.results) {\n              llmResult = parsed.body.results;\n          } else {\n              llmResult = parsed;\n          }\n      } catch (e) {\n          console.log('Error parsing result_json', e);\n      }\n  } else if (item.json.result) {\n       llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  }\n\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  let imageUrl = llmResult.image_url || item.json.image_url || item.json.generated_image_url || '';\n  let tempId = item.json.temp_id || 'news_' + Math.floor(Math.random()*100000);\n\n  if (!imageUrl || !imageUrl.includes('storage.googleapis.com')) {\n      imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker+Market+Analysis';\n  }\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: tempId\n  };\n}\nreturn items;\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12080,
-        8848
+        10100,
+        8600
       ],
       "id": "f564119e-c050-4c5b-b5a8-82849741f685",
       "name": "Definir Estilo y URL"
@@ -410,8 +430,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        12272,
-        8848
+        10300,
+        8600
       ],
       "id": "7fb0c12a-1de5-4e94-a423-c970512c1d35",
       "disabled": true,
@@ -432,8 +452,8 @@
       "type": "n8n-nodes-base.googleCloudStorage",
       "typeVersion": 1,
       "position": [
-        12480,
-        8848
+        10500,
+        8600
       ],
       "id": "fd9cf54f-2a7d-464b-b425-3454daf7c061",
       "credentials": {
@@ -447,13 +467,13 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst validItems = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n   let data = item.json;\n\n   // Same robust parsing logic as Deduplicator\n   if (data['body.results']) {\n       if (data['body.results'].result_json) {\n           // ... existing logic ...\n       }\n   }\n   // Note: Simplified for brevity in this task, reusing existing logic structure\n\n   const bucket = 'alphaseeker-assets';\n   let imageUrl = data.image_url || item.json.generated_image_url || '';\n   \n   // Final check\n   if (!imageUrl) imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker';\n\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       continue;\n   }\n\n   const generatedId = data.url ? data.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100) : 'news_' + Math.floor(Math.random() * 1000);\n\n   if (seenIds.has(generatedId)) {\n       console.log('Saltando ID repetido');\n       continue;\n   }\n   seenIds.add(generatedId);\n\n   const normalized = {\n       id: generatedId,\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || data.market_impact || '', \n       action: data.action || 'HOLD',\n       category: data.category || 'MERCADOS',\n       asset_class: data.asset_class || 'ACCIONES',\n       tags: Array.isArray(data.tags) ? data.tags : [],\n       social_content: data.social_content || data.content_summary || '',\n       image_url: imageUrl\n   };\n\n   if (!normalized.market_impact) {\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
+        "jsCode": "\nconst validItems = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n   let data = item.json;\n\n   if (data['body.results']) {\n       if (data['body.results'].result_json) {\n       }\n   }\n\n   const bucket = 'alphaseeker-assets';\n   let imageUrl = data.image_url || item.json.generated_image_url || '';\n   \n   if (!imageUrl) imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker';\n\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       continue;\n   }\n\n   const generatedId = data.url ? data.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100) : 'news_' + Math.floor(Math.random() * 1000);\n\n   if (seenIds.has(generatedId)) {\n       continue;\n   }\n   seenIds.add(generatedId);\n\n   const normalized = {\n       id: generatedId,\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || data.market_impact || '', \n       action: data.action || 'HOLD',\n       category: data.category || 'MERCADOS',\n       asset_class: data.asset_class || 'ACCIONES',\n       tags: Array.isArray(data.tags) ? data.tags : [],\n       social_content: data.social_content || data.content_summary || '',\n       image_url: imageUrl\n   };\n\n   if (!normalized.market_impact) {\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12672,
-        8848
+        10700,
+        8600
       ],
       "id": "ac82be7f-ab32-4db5-b58c-a67f36116b74",
       "name": "Preparar Objeto Final"
@@ -471,8 +491,8 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        12880,
-        8848
+        10900,
+        8600
       ],
       "id": "a6ffd20e-c86e-4693-93ec-509257b4c844",
       "credentials": {
@@ -487,15 +507,14 @@
         "authentication": "serviceAccount",
         "operation": "delete",
         "projectId": "alphaseeker-app-2025",
-        "collection": "news_cache",
-        "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown' }}"
+        "collection": "news_cache"
       },
       "name": "Delete from Cache",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        13072,
-        8848
+        11100,
+        8600
       ],
       "id": "b530467b-72b0-46af-a21a-ade4b564303a",
       "credentials": {
@@ -518,8 +537,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        13072,
-        9040
+        11300,
+        8600
       ],
       "webhookId": "15f33645-acbd-475b-8f78-b50e9c5f4ad6",
       "credentials": {
@@ -556,8 +575,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        13680,
-        8992
+        11500,
+        8600
       ],
       "id": "f92652e6-5f2e-4764-9087-ac6ff349a77a"
     },
@@ -570,8 +589,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        13984,
-        8944
+        11700,
+        8600
       ]
     },
     {
@@ -594,8 +613,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        14176,
-        8944
+        11900,
+        8600
       ]
     },
     {
@@ -608,8 +627,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        14480,
-        8752
+        12100,
+        8600
       ]
     },
     {
@@ -640,8 +659,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        14672,
-        8752
+        12300,
+        8600
       ]
     },
     {
@@ -657,8 +676,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.1,
       "position": [
-        14576,
-        9040
+        12500,
+        8600
       ],
       "webhookId": "33e05504-53a3-422c-a793-4493ec17f6f8",
       "credentials": {
@@ -695,8 +714,37 @@
         ]
       ]
     },
+    "Webhook Callback": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Config": {
       "main": [
+        [
+          {
+            "node": "Is Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Webhook?": {
+      "main": [
+        [
+          {
+            "node": "Security Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "RSS Read",
@@ -872,17 +920,6 @@
         [
           {
             "node": "Recorrer noticias en lotes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook Callback": {
-      "main": [
-        [
-          {
-            "node": "Security Check",
             "type": "main",
             "index": 0
           }
