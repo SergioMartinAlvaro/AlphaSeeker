@@ -31,7 +31,7 @@
             },
             {
               "name": "WEBHOOK_TOKEN",
-              "value": "secure-token-12345-alpha-seeker-v5"
+              "value": "={{ $env.WEBHOOK_TOKEN }}"
             }
           ]
         },

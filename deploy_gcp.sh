@@ -67,6 +67,16 @@ if [ -z "$HF_TOKEN" ]; then
     fi
 fi
 
+# 1.2 Generate Secure Webhook Token if not present
+if [ -z "$WEBHOOK_TOKEN" ]; then
+    if command -v uuidgen &> /dev/null; then
+        WEBHOOK_TOKEN=$(uuidgen)
+    else
+        WEBHOOK_TOKEN=$(openssl rand -hex 16)
+    fi
+    echo "🔑 Generated Secure Webhook Token: $WEBHOOK_TOKEN"
+fi
+
 echo "--- Deploying Cloud LLM API (Gemini-backed) ---"
 $GCLOUD_CMD run deploy $SERVICE_NAME_API \
     --source ./llm-api-cloud \
@@ -179,6 +189,7 @@ docker run -d \
   -v n8n_data:/home/node/.n8n \
   -e N8N_HOST=0.0.0.0 \
   -e WEBHOOK_URL=http://localhost:5678 \
+  -e WEBHOOK_TOKEN="$WEBHOOK_TOKEN" \
   -e N8N_SECURE_COOKIE=false \
   docker.n8n.io/n8nio/n8n" \
         --tags=n8n-server
