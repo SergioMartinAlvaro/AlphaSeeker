@@ -13,6 +13,7 @@ services:
       - N8N_HOST=n8n
       - N8N_PROTOCOL=http
       - NODE_OPTIONS=--max-old-space-size=4096 # Requisito para n8n en entornos grandes
+      - LLM_SERVICE_API_KEY=95F42BAD-B53C-4AEF-A0FE-75095F08E0E8
     volumes:
       - n8n_data_v2:/home/node/.n8n 
     restart: unless-stopped

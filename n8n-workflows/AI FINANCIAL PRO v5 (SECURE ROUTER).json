@@ -1,0 +1,1144 @@
+{
+  "name": "AI FINANCIAL PRO v5 (SECURE ROUTER) copy",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        85984,
+        45984
+      ],
+      "id": "27eebd45-673e-4491-842e-4e435ae8011f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "SCRAPER_URL",
+              "value": "https://python-scraper-684822784514.us-central1.run.app"
+            },
+            {
+              "name": "LLM_API_URL",
+              "value": "https://alphaseeker-llm-cloud-684822784514.us-central1.run.app"
+            },
+            {
+              "name": "WEBHOOK_URL",
+              "value": "http://34.9.244.104:5678/webhook/webhook-callback"
+            },
+            {
+              "name": "WEBHOOK_TOKEN",
+              "value": "CCC3D0DD-31B9-4DA6-87A2-E2710F5BB83E"
+            },
+            {
+              "name": "LLM_API_KEY",
+              "value": "{{ $env.LLM_SERVICE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        86448,
+        45760
+      ],
+      "id": "13a04ad6-d5b7-47e4-9e11-020125b47c71",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.headers ? true : false }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        86672,
+        45760
+      ],
+      "id": "04d916d4-f159-471b-82a1-1b5498b2e8fc",
+      "name": "Is Webhook?"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bloomberg.com/markets/news.rss?limit=5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        86896,
+        45888
+      ],
+      "id": "7d02939b-4fc2-41c6-937f-fc3ec0d96baf",
+      "name": "RSS Read",
+      "retryOnFail": true,
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {
+          "customFields": "limit=5"
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        86896,
+        46080
+      ],
+      "id": "cd35c0bb-3aa4-43e0-a54b-cd6a5e05d36b",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.investing.com/rss/news.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        86896,
+        46288
+      ],
+      "id": "a124a346-25bd-44be-bd73-c9f1fee1ee0e",
+      "name": "RSS Read2",
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        87264,
+        46080
+      ],
+      "id": "975430fb-944a-43f9-b6ff-5f2dc94b9b6c",
+      "name": "Merge RSS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.SCRAPER_URL }}/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        87648,
+        46080
+      ],
+      "id": "b21ef8cf-1fe8-4b0c-8ec7-e640b6c89848",
+      "name": "Obtener contenido de noticias",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.error ? true : false }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        87840,
+        46080
+      ],
+      "id": "131af38a-bfa9-4ecb-a9cb-fc879ad93d3b",
+      "name": "Check Scraper Errors"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news"
+      },
+      "name": "Get Existing News",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        88032,
+        46080
+      ],
+      "id": "27f30211-bd44-40a6-a940-094f792f9bc4",
+      "credentials": {
+        "googleApi": {
+          "id": "23XP927b2wW7Z3Rc",
+          "name": "Google Service Account account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache"
+      },
+      "name": "Get Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        88240,
+        46080
+      ],
+      "id": "0e63f8ef-4831-4e5b-9db2-2957f0a3599e",
+      "credentials": {
+        "googleApi": {
+          "id": "23XP927b2wW7Z3Rc",
+          "name": "Google Service Account account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const newItems = $('Check Scraper Errors').all(); \nconst existingNews = $('Get Existing News').all(); \nconst cachedNews = $('Get Cache').all();\n\nconst existingUrls = new Set();\nif (existingNews && existingNews.length) {\n  existingNews.forEach(i => { if(i.json.url) existingUrls.add(i.json.url); });\n}\n\nconst cachedMap = new Map();\nif (cachedNews && cachedNews.length) {\n  cachedNews.forEach(i => {\n    if(i.json.url) cachedMap.set(i.json.url, i.json);\n  });\n}\n\nconst toProcess = [];\n\nfor (const item of newItems) {\n  let url = item.json.link || item.json.url;\n  \n  if (!url && item.json.body) {\n      url = item.json.body.url || (item.json.body.result && item.json.body.result.url);\n  }\n  \n  if (existingUrls.has(url)) continue;\n\n  if (cachedMap.has(url)) {\n      const cached = cachedMap.get(url);\n      item.json = {\n          ...item.json,\n          ...JSON.parse(cached.result_json || '{}'),\n          is_cached: true\n      };\n  } else {\n      item.json.is_cached = false;\n      const raw_text = item.json.content || item.json.description || item.json.summary || \"\";\n      let clean_text = raw_text;\n      const markers = [\"Most Popular Articles\", \"Latest comments\", \"Trade With A Regulated Broker\", \"View all comments\", \"More News\", \"Market Movers\"];\n      for (const m of markers) {\n          const idx = clean_text.indexOf(m);\n          if (idx > 200) clean_text = clean_text.substring(0, idx);\n      }\n\n      item.json.prompt_para_api = `### Role:\\nYou are a Senior Financial Analyst at a top Wall Street firm.\\n\\n### Task:\\nAnalyze the provided news content and output a STRICT JSON object.\\n\\n### EXECUTION STEPS (INTERNAL PROCESS):\\n1. **READ**: Read the entire news content carefully.\\n2. **INTERPRET**: mentally evaluate the financial implications, identifying key catalysts, risks, and market sentiment.\\n3. **GENERATE**: Populate the JSON fields based STRICTLY on your interpretation. Do not hallucinate data not present or implied by the text.\\n\\n### FIELD DEFINITIONS (CRITICAL):\\n1. **market_impact**: Explain specifically HOW this affects the asset price or sector. Don't just say \"it affects\". Mention volatility, trend reversal, or volume spikes. (Max 2 sentences, Spanish).\\n2. **sentiment**: The direct market mood implied by the text. BULLISH (Optimistic/Uptrend), BEARISH (Pessimistic/Downtrend), NEUTRAL (Ambiguous/Sideways).\\n3. **action**: Your professional recommendation. BUY (Positive catalyst), SELL (Negative catalyst), HOLD (Uncertainty/Wait), DISCARD (Irrelevant/Spam).\\n4. **investment_advice**: Concrete reasoning connecting the news to the Action. Why buy/sell? (Spanish).\\n\\n### CRITICAL INSTRUCTIONS:\\n1. **RELEVANCE CHECK**: If the content is strictly legal/procedural (like Form 8-K), spam, or has NO financial market relevance, set \"action\" to \"DISCARD\" and \"market_impact\" to \"IRRELEVANT\".\\n2. **NO MARKDOWN**: Output raw JSON only.\\n3. **LANGUAGE**: Output values in SPANISH where requested.\\n\\n### Content:\\n${clean_text}\\n\\n### Output Schema:\\n{\\n  \"title\": \"Spanish Title (Max 15 words)\",\\n  \"summary\": \"Concise summary in Spanish\",\\n  \"market_impact\": \"(MANDATORY) Analysis in Spanish based on definition above.\",\\n  \"sentiment\": \"BULLISH | BEARISH | NEUTRAL\",\\n  \"risk_level\": \"LOW | MEDIUM | HIGH\",\\n  \"action\": \"BUY | SELL | HOLD | DISCARD\",\\n  \"investment_advice\": {\\n    \"rating\": \"Buy/Hold/Sell\",\\n    \"reasoning\": \"Explanation in Spanish\"\\n  },\\n  \"image_prompt\": \"Futuristic financial illustration...\"\\n}`;\n      \n      item.json.metadata_para_api = {\n          url: url,\n          source_content: raw_text,\n          published_date: item.json.isoDate || item.json.pubDate || new Date().toISOString()\n      };\n  }\n  toProcess.push(item);\n}\n\nreturn toProcess;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        88432,
+        46080
+      ],
+      "id": "87e5eac7-ed61-45de-a69f-4c879afac540",
+      "name": "Deduplicator & Filter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_cached }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        88640,
+        46080
+      ],
+      "id": "00dd6b1e-3e9e-4c1a-b0a9-89705e2ff9a1",
+      "name": "Is Cached?"
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        88832,
+        46176
+      ],
+      "id": "456b954e-75a7-4849-9ff3-5aaa7e18db8b",
+      "name": "Limit to 1"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        89040,
+        46176
+      ],
+      "id": "4941ba65-00cf-4ae3-80e2-68b332b8c3d7",
+      "name": "Recorrer noticias en lotes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const noticias = items.map(item => ({\n    text: item.json.prompt_para_api,\n    metadata: item.json.metadata_para_api\n}));\n\nconst config = $('Config').first().json;\n\nreturn [{\n    json: {\n        payload: {\n            noticias: noticias,\n            callback_url: config.WEBHOOK_URL,\n            webhook_token: config.WEBHOOK_TOKEN\n        }\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        89184,
+        46288
+      ],
+      "id": "1c515513-44e3-4286-8b1c-f22f4caa9e58",
+      "name": "Preparar Payload UNICO"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.LLM_API_URL }}/analysis/analyze-batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $('Config').first().json.LLM_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        89344,
+        46288
+      ],
+      "id": "db2fb42b-2b5d-4948-8a8c-300e1cacb0e7",
+      "name": "Llamar a la IA en lote",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8657d4ba-6a6e-460c-8b79-d6accbed7b10",
+        "options": {}
+      },
+      "name": "Webhook Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        85984,
+        45536
+      ],
+      "id": "d0b389b9-4f0a-4526-9c26-8da88fb3cf17",
+      "webhookId": "8657d4ba-6a6e-460c-8b79-d6accbed7b10"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.headers['x-api-key'] }}",
+              "value2": "={{ $('Config').first().json.WEBHOOK_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        86896,
+        45536
+      ],
+      "id": "a31543d6-18df-410d-b3fd-0ed891a3e73f",
+      "name": "Security Check"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        87088,
+        45536
+      ],
+      "id": "f8f08d0e-421d-42f7-b812-ca0c2c52eff2",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache",
+        "documentId": "={{ $json.url ? $json.url.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown_' + Math.floor(Math.random() * 1000) }}",
+        "columns": "url, result_json"
+      },
+      "name": "Save to Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        87296,
+        45536
+      ],
+      "id": "858122b6-4ecb-4ac5-8a4c-4dc7169262cd",
+      "credentials": {
+        "googleApi": {
+          "id": "23XP927b2wW7Z3Rc",
+          "name": "Google Service Account account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n  item.json.result_json = JSON.stringify(item.json);\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        87184,
+        45552
+      ],
+      "id": "06e75e24-ba64-4581-85db-e0dd6885a86d",
+      "name": "Prep for Cache"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nfor (const item of items) {\n  let llmResult = {};\n  \n  if (item.json.result_json) {\n      try {\n          const parsed = typeof item.json.result_json === 'string' ? JSON.parse(item.json.result_json) : item.json.result_json;\n          if (parsed['body.results']) {\n              llmResult = parsed['body.results'];\n          } else if (parsed.body && parsed.body.results) {\n              llmResult = parsed.body.results;\n          } else {\n              llmResult = parsed;\n          }\n      } catch (e) {\n          console.log('Error parsing result_json', e);\n      }\n  } else if (item.json.result) {\n       llmResult = typeof item.json.result === 'string' ? JSON.parse(item.json.result) : item.json.result;\n  }\n\n  const subjectPrompt = item.json.image_prompt || (llmResult ? llmResult.image_prompt : '') || 'Financial graph';\n  \n  let imageUrl = llmResult.image_url || item.json.image_url || item.json.generated_image_url || '';\n  let tempId = item.json.temp_id || 'news_' + Math.floor(Math.random()*100000);\n\n  if (!imageUrl || !imageUrl.includes('storage.googleapis.com')) {\n      imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker+Market+Analysis';\n  }\n  \n  item.json = {\n    ...item.json,\n    ...llmResult,\n    generated_image_url: imageUrl,\n    temp_id: tempId\n  };\n}\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        87488,
+        45536
+      ],
+      "id": "eed908f0-b797-4833-ae9d-c632ef155970",
+      "name": "Definir Estilo y URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.generated_image_url }}",
+        "options": {
+          "batching": {}
+        }
+      },
+      "name": "Descargar Imagen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        87696,
+        45536
+      ],
+      "id": "61dbdb6a-64d6-4666-ac86-f249b11a803d",
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "object",
+        "operation": "create",
+        "bucketName": "alphaseeker-assets",
+        "objectName": "={{ 'news-images/' + $json.temp_id + '.jpg' }}",
+        "createData": {},
+        "createQuery": {},
+        "encryptionHeaders": {},
+        "requestOptions": {}
+      },
+      "name": "Subir a GCS",
+      "type": "n8n-nodes-base.googleCloudStorage",
+      "typeVersion": 1,
+      "position": [
+        87888,
+        45536
+      ],
+      "id": "ac9b37fe-28f2-4252-8682-d43eefc44575",
+      "credentials": {
+        "googleCloudStorageOAuth2Api": {
+          "id": "qLnNF6lXChjLcSKr",
+          "name": "Google Cloud Storage account"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst validItems = [];\nconst seenIds = new Set();\n\nfor (const item of items) {\n   let data = item.json;\n\n   if (data['body.results']) {\n       if (data['body.results'].result_json) {\n       }\n   }\n\n   const bucket = 'alphaseeker-assets';\n   let imageUrl = data.image_url || item.json.generated_image_url || '';\n   \n   if (!imageUrl) imageUrl = 'https://placehold.co/800x600/1e3a8a/ffffff.png?text=AlphaSeeker';\n\n   if (data.action === 'DISCARD' || data.market_impact === 'IRRELEVANT') {\n       continue;\n   }\n\n   const generatedId = data.url ? data.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100) : 'news_' + Math.floor(Math.random() * 1000);\n\n   if (seenIds.has(generatedId)) {\n       continue;\n   }\n   seenIds.add(generatedId);\n\n   const normalized = {\n       id: generatedId,\n       title: data.title || 'Market News',\n       content_summary: data.summary || data.content_summary || '',\n       content: data.source_content || data.content || '', \n       published_date: new Date().toISOString(),\n       url: data.url || '',\n       source: 'n8n',\n       investment_advice: data.investment_advice || { rating: 'Hold', reasoning: 'Insufficient data' },\n       market_impact: data.market_impact || '',\n       risk_level: data.risk_level || 'MEDIUM',\n       sentiment: data.sentiment || 'NEUTRAL',\n       analysis: data.analysis || data.market_impact || '', \n       action: data.action || 'HOLD',\n       category: data.category || 'MERCADOS',\n       asset_class: data.asset_class || 'ACCIONES',\n       tags: Array.isArray(data.tags) ? data.tags : [],\n       social_content: data.social_content || data.content_summary || '',\n       image_url: imageUrl\n   };\n\n   if (!normalized.market_impact) {\n       continue;\n   }\n\n   item.json = normalized;\n   validItems.push(item);\n}\n\nreturn validItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        88096,
+        45536
+      ],
+      "id": "2aafde3f-2bda-4b13-8bab-feedf74a58fb",
+      "name": "Preparar Objeto Final"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "upsert",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news",
+        "updateKey": "id",
+        "columns": "id,title,content_summary,url,published_date,content,investment_advice,risk_level,analysis,market_impact,sentiment,action,image_url,category,asset_class,tags"
+      },
+      "name": "Guardar en Firestore Final",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        88288,
+        45536
+      ],
+      "id": "3cb6a64f-ff5a-493e-81b7-32f80a856b01",
+      "credentials": {
+        "googleApi": {
+          "id": "23XP927b2wW7Z3Rc",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "delete",
+        "projectId": "alphaseeker-app-2025",
+        "collection": "news_cache"
+      },
+      "name": "Delete from Cache",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        88496,
+        45536
+      ],
+      "id": "cc1f1480-48b8-47a1-9a11-92883074f8b3",
+      "credentials": {
+        "googleApi": {
+          "id": "23XP927b2wW7Z3Rc",
+          "name": "Google Service Account account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "chatId": "@alphaseeker_finances",
+        "text": "=<b>{{ $json.sentiment === 'BULLISH' ? '🚀' : ($json.sentiment === 'BEARISH' ? '📉' : '⚖️') }} {{ $json.title.toUpperCase() }}</b>\n\n{{ $json.content_summary }}\n\n🚀 <b>Análisis de IA:</b> {{ $json.action }} ({{ $json.risk_level }} RISK)\n\n👇 <i>Lee el análisis detallado y los niveles clave aquí:</i>\nhttps://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "fbc66de0-1adc-41ac-afac-e3f2d750fe77",
+      "name": "Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        88688,
+        45536
+      ],
+      "webhookId": "a3794568-59cd-4049-8628-d5d14860bce8",
+      "credentials": {
+        "telegramApi": {
+          "id": "xEFEyNMz9KEaygLD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.LLM_API_URL }}/social/post",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $('Config').first().json.LLM_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.social_content }}\n\n🔗 https://alphaseeker-frontend-684822784514.us-central1.run.app/news/{{ $json.id }}"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.image_url }}"
+            },
+            {
+              "name": "platform",
+              "value": "facebook"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        88896,
+        45536
+      ],
+      "id": "69d85450-1f58-46ee-a635-e31a8801a39e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst validItems = items.map(i => i.json).filter(i => i.title && (i.summary || i.content_summary));\n\nif (validItems.length === 0) {\n  return [];\n}\n\nreturn [\n  {\n    json: {\n      items: validItems\n    }\n  }\n];"
+      },
+      "id": "6fab2ffa-20e0-4703-b45e-e3c599991d4d",
+      "name": "Aggregate News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        89088,
+        45536
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.LLM_API_URL }}/analysis/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $('Config').first().json.LLM_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ $json.items }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "63699999-dc59-4175-9331-4642390ed3f9",
+      "name": "Generate Market Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        89296,
+        45536
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').first().json.LLM_API_URL }}/integration/facebook/token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $('Config').first().json.LLM_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6820b5d9-5c7c-46a4-aeb9-e56afe5018f2",
+      "name": "Get Facebook Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        89488,
+        45536
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v19.0/61585831636993/photos",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $('Generate Market Summary').first().json.image_url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Generate Market Summary').first().json.social_content }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fc46de94-dd6a-4270-98e2-2d2b1298c3cf",
+      "name": "Post to Facebook Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        89696,
+        45536
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "@alphaseeker_news",
+        "text": "={{ $json.social_content }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "5efee420-65df-4e05-a287-0891b4f484e2",
+      "name": "Post to Telegram Channel",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        89888,
+        45536
+      ],
+      "webhookId": "45f1015f-f68b-4a6c-8b78-58f453a780cf",
+      "credentials": {
+        "telegramApi": {
+          "id": "xEFEyNMz9KEaygLD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "maxItems": 3
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        87456,
+        46080
+      ],
+      "id": "cf0bbd83-166d-4b82-b7dc-3300017e13c0",
+      "name": "Limit to "
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Callback": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Is Webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Webhook?": {
+      "main": [
+        [
+          {
+            "node": "Security Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Merge RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Merge RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read2": {
+      "main": [
+        [
+          {
+            "node": "Merge RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge RSS": {
+      "main": [
+        [
+          {
+            "node": "Limit to ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener contenido de noticias": {
+      "main": [
+        [
+          {
+            "node": "Check Scraper Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Scraper Errors": {
+      "main": [
+        [
+          {
+            "node": "Get Existing News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing News": {
+      "main": [
+        [
+          {
+            "node": "Get Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cache": {
+      "main": [
+        [
+          {
+            "node": "Deduplicator & Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicator & Filter": {
+      "main": [
+        [
+          {
+            "node": "Is Cached?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Cached?": {
+      "main": [
+        [
+          {
+            "node": "Definir Estilo y URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limit to 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to 1": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorrer noticias en lotes": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Preparar Payload UNICO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Payload UNICO": {
+      "main": [
+        [
+          {
+            "node": "Llamar a la IA en lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar a la IA en lote": {
+      "main": [
+        [
+          {
+            "node": "Recorrer noticias en lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Security Check": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Prep for Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep for Cache": {
+      "main": [
+        [
+          {
+            "node": "Save to Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Cache": {
+      "main": [
+        [
+          {
+            "node": "Definir Estilo y URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Definir Estilo y URL": {
+      "main": [
+        [
+          {
+            "node": "Descargar Imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Imagen": {
+      "main": [
+        [
+          {
+            "node": "Subir a GCS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a GCS": {
+      "main": [
+        [
+          {
+            "node": "Preparar Objeto Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Objeto Final": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Firestore Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Firestore Final": {
+      "main": [
+        [
+          {
+            "node": "Delete from Cache",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Aggregate News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate News": {
+      "main": [
+        [
+          {
+            "node": "Generate Market Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Market Summary": {
+      "main": [
+        [
+          {
+            "node": "Get Facebook Token",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Telegram Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Facebook Token": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to ": {
+      "main": [
+        [
+          {
+            "node": "Obtener contenido de noticias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "ca3075c3-5f79-464d-b1c2-31f483f3abef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "08a112c702a6b8d9c227e5db241bef1608a6170b374f551094e874b45a57fcfd"
+  },
+  "id": "FWP1aGTHbXr3Qu0w",
+  "tags": [
+    {
+      "updatedAt": "2025-12-23T00:17:56.877Z",
+      "createdAt": "2025-12-23T00:17:56.877Z",
+      "id": "3ak8nBLy2atFeL3M",
+      "name": "Development"
+    }
+  ]
+}

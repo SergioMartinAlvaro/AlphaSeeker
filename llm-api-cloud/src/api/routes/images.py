@@ -1,10 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
 from src.application.dtos.schemas import ImageBatchRequest
 from src.application.services.job_service import JobService
 from src.application.services.image_service import ImageService
+from src.api.dependencies.auth import get_api_key
 
-router = APIRouter(prefix="/images", tags=["Images"])
+router = APIRouter(prefix="/images", tags=["Images"], dependencies=[Depends(get_api_key)])
 
 @router.post("/generate-images-batch", summary="Generate images batch")
 async def generate_images_batch(request: ImageBatchRequest, background_tasks: BackgroundTasks):

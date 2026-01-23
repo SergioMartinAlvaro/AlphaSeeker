@@ -26,5 +26,11 @@ RUN npm run build
 # Expose port
 EXPOSE 3000
 
+# Create necessary directories and set permissions
+RUN mkdir -p uploads && chown -R node:node /usr/src/app
+
+# Switch to non-root user
+USER node
+
 # Start command
 CMD [ "npm", "start" ]

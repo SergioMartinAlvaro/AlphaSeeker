@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from src.application.services.token_manager import TokenManager
+from src.api.dependencies.auth import get_api_key
 
-router = APIRouter(prefix="/integration", tags=["Integration"])
+router = APIRouter(prefix="/integration", tags=["Integration"], dependencies=[Depends(get_api_key)])
 
 @router.get("/facebook/token", summary="Get Valid Facebook Page Token")
 async def get_facebook_token():

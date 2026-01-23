@@ -1,10 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
 from src.application.dtos.schemas import BatchRequest
 from src.application.services.job_service import JobService
 from src.application.services.analysis_service import AnalysisService
+from src.api.dependencies.auth import get_api_key
 
-router = APIRouter(prefix="/analysis", tags=["Analysis"])
+router = APIRouter(prefix="/analysis", tags=["Analysis"], dependencies=[Depends(get_api_key)])
 
 @router.post("/analyze-batch", summary="Analyze news batch")
 async def analyze_batch(request: BatchRequest, background_tasks: BackgroundTasks):

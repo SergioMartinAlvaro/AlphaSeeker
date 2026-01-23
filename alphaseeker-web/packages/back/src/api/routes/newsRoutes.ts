@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { NewsController } from '../controllers/NewsController';
 import { NewsService } from '../../application/services/NewsService';
 import { FirestoreNewsRepository } from '../../infrastructure/repositories/FirestoreNewsRepository';
+import { verifyToken } from '../middleware/authMiddleware';
 import multer from 'multer';
 import path from 'path';
 
@@ -112,7 +113,7 @@ router.get('/:id', (req, res) => newsController.getNewsById(req, res));
  *       200:
  *         description: Updated news item
  */
-router.put('/:id', (req, res) => newsController.updateNews(req, res));
+router.put('/:id', verifyToken, (req, res) => newsController.updateNews(req, res));
 
 /**
  * @swagger
@@ -133,7 +134,7 @@ router.put('/:id', (req, res) => newsController.updateNews(req, res));
  *       204:
  *         description: Successfully deleted
  */
-router.delete('/', (req, res) => newsController.deleteNewsByDate(req, res));
+router.delete('/', verifyToken, (req, res) => newsController.deleteNewsByDate(req, res));
 
 /**
  * @swagger
@@ -144,7 +145,7 @@ router.delete('/', (req, res) => newsController.deleteNewsByDate(req, res));
  *       204:
  *         description: Deleted
  */
-router.delete('/:id', (req, res) => newsController.deleteNews(req, res));
+router.delete('/:id', verifyToken, (req, res) => newsController.deleteNews(req, res));
 
 /**
  * @swagger
@@ -155,7 +156,7 @@ router.delete('/:id', (req, res) => newsController.deleteNews(req, res));
  *       200:
  *         description: Deleted count
  */
-router.delete('/cleanup/inconclusive', (req, res) => newsController.deleteInconclusive(req, res));
+router.delete('/cleanup/inconclusive', verifyToken, (req, res) => newsController.deleteInconclusive(req, res));
 
 /**
  * @swagger
@@ -175,7 +176,7 @@ router.delete('/cleanup/inconclusive', (req, res) => newsController.deleteInconc
  *       200:
  *         description: Image URL
  */
-router.post('/upload', upload.single('image'), (req, res) => newsController.uploadImage(req, res));
+router.post('/upload', verifyToken, upload.single('image'), (req, res) => newsController.uploadImage(req, res));
 
 /**
  * @swagger

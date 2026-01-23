@@ -9,6 +9,25 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+# CORS Configuration
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://alphaseeker-frontend-684822784514.us-central1.run.app",
+    # Add n8n webhook/editor URLs if needed, though mostly server-to-server
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Include Routers
 app.include_router(analysis.router)
 app.include_router(images.router)

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from src.application.services.facebook_service import FacebookService
+from src.api.dependencies.auth import get_api_key
 
-router = APIRouter(tags=["Social"])
+router = APIRouter(tags=["Social"], dependencies=[Depends(get_api_key)])
 
 class SocialPostRequest(BaseModel):
     text: str
