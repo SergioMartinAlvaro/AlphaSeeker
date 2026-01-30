@@ -83,7 +83,7 @@ $GCLOUD_CMD run deploy $SERVICE_NAME_API \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
-    --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY",HF_TOKEN="$HF_TOKEN",FB_PAGE_ACCESS_TOKEN="$FB_PAGE_ACCESS_TOKEN",FB_PAGE_ID="$FB_PAGE_ID",FB_APP_ID="$FB_APP_ID",FB_APP_SECRET="$FB_APP_SECRET" \
+    --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY",HF_TOKEN="$HF_TOKEN",FB_PAGE_ACCESS_TOKEN="$FB_PAGE_ACCESS_TOKEN",FB_PAGE_ID="$FB_PAGE_ID",FB_APP_ID="$FB_APP_ID",FB_APP_SECRET="$FB_APP_SECRET",API_KEY="95F42BAD-B53C-4AEF-A0FE-75095F08E0E8" \
     --memory 512Mi \
     --cpu 1 \
     --port 8080
@@ -191,6 +191,7 @@ docker run -d \
   -e WEBHOOK_URL=http://localhost:5678 \
   -e WEBHOOK_TOKEN="$WEBHOOK_TOKEN" \
   -e N8N_SECURE_COOKIE=false \
+  -e LLM_SERVICE_API_KEY="95F42BAD-B53C-4AEF-A0FE-75095F08E0E8" \
   docker.n8n.io/n8nio/n8n" \
         --tags=n8n-server
 
